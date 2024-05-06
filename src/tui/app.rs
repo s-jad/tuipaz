@@ -60,7 +60,9 @@ impl<'a> App<'a> {
             Input { key: Key::Esc, .. } => {
                 self.exit();
             }
-            _ => {}
+            input => {
+                self.note_editor.input(input);
+            }
         };
         Ok(())
     }
