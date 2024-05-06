@@ -1,6 +1,7 @@
-use std::panic;
-
 use color_eyre::{config::HookBuilder, eyre};
+use std::error::Error;
+use std::fmt;
+use std::panic;
 
 use crate::tui::utils;
 
@@ -25,4 +26,20 @@ pub fn install_hooks() -> color_eyre::Result<()> {
     ))?;
 
     Ok(())
+}
+
+#[derive(Debug)]
+pub(crate) struct DbError(pub Box<dyn Error + Send + Sync>);
+impl fmt::Display for DbError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl Error for DbError {}
+
+impl From<eyre::Report> for DbError {
+    fn from(report: eyre::Report) -> Self {
+        DbError(report.into())
+    }
 }
