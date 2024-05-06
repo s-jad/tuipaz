@@ -9,8 +9,7 @@ use tui::app::App;
 #[tokio::main]
 async fn main() -> Result<()> {
     dotenv().ok();
-    let db_url = dotenv()?;
-    let db = init_db::create_db(db_url).await?;
+    let db = init_db::create_db().await?;
     tui::errors::install_hooks()?;
     let mut term = tui::utils::init()?;
     let res = App::new(db).run(&mut term)?;
