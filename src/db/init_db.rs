@@ -1,8 +1,7 @@
-use color_eyre::eyre::eyre;
 use sqlx::sqlite::SqlitePool;
 use std::path::PathBuf;
 
-use crate::tui::errors::DbError;
+use crate::tui::errors::{create_db_error, DbError};
 
 pub(crate) async fn create_db(db_url: PathBuf) -> Result<SqlitePool, DbError> {
     let db_url_str = db_url
@@ -14,9 +13,4 @@ pub(crate) async fn create_db(db_url: PathBuf) -> Result<SqlitePool, DbError> {
         .map_err(|e| create_db_error(e.to_string()))?;
 
     Ok(db)
-}
-
-fn create_db_error(msg: String) -> DbError {
-    let err = eyre!(msg);
-    DbError::from(err)
 }
