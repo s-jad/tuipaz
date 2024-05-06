@@ -47,6 +47,12 @@ impl From<eyre::Report> for DbError {
     }
 }
 
+impl From<sqlx::Error> for DbError {
+    fn from(err: sqlx::Error) -> Self {
+        DbError(err.into())
+    }
+}
+
 pub(crate) fn create_db_error(msg: String) -> DbError {
     let err = eyre!(msg);
     DbError::from(err)
