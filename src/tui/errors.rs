@@ -1,4 +1,7 @@
-use color_eyre::{config::HookBuilder, eyre};
+use color_eyre::{
+    config::HookBuilder,
+    eyre::{self, eyre},
+};
 use std::error::Error;
 use std::fmt;
 use std::panic;
@@ -42,4 +45,9 @@ impl From<eyre::Report> for DbError {
     fn from(report: eyre::Report) -> Self {
         DbError(report.into())
     }
+}
+
+pub(crate) fn create_db_error(msg: String) -> DbError {
+    let err = eyre!(msg);
+    DbError::from(err)
 }
