@@ -8,6 +8,7 @@ use ratatui::{
     widgets::{block::Title, Block, BorderType, Borders, Paragraph, Widget, Wrap},
     Frame,
 };
+use sqlx::{Pool, Sqlite};
 use tui_textarea::{Input, Key, TextArea};
 
 use super::utils::Tui;
@@ -19,16 +20,18 @@ pub(crate) enum AppState {
     Exit,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub(crate) struct App<'a> {
     pub(crate) state: AppState,
+    pub(crate) db: Pool<Sqlite>,
     pub(crate) note_editor: TextArea<'a>,
 }
 
 impl<'a> App<'a> {
-    pub fn default() -> Self {
+    pub fn new(db: Pool<Sqlite>) -> Self {
         Self {
             state: AppState::default(),
+            db,
             note_editor: TextArea::default(),
         }
     }
