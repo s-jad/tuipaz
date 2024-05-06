@@ -10,10 +10,10 @@ use tui::app::App;
 async fn main() -> Result<()> {
     dotenv().ok();
     let db_url = dotenv()?;
-    init_db::create_db(db_url).await?;
+    let db = init_db::create_db(db_url).await?;
     tui::errors::install_hooks()?;
     let mut term = tui::utils::init()?;
-    let res = App::default().run(&mut term)?;
+    let res = App::new(db).run(&mut term)?;
     tui::utils::restore()?;
 
     return Ok(res);
