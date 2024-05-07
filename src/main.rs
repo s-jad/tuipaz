@@ -4,7 +4,7 @@ mod tui;
 use color_eyre::Result;
 use db::init_db;
 use dotenv::dotenv;
-use tui::app::App;
+use tui::app::{run, App};
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -12,7 +12,8 @@ async fn main() -> Result<()> {
     tui::errors::install_hooks()?;
     let db = init_db::create_db().await?;
     let mut term = tui::utils::init()?;
-    let res = App::new(db).run(&mut term).await?;
+    let mut app = App::new(db);
+    let res = run(&mut app, &mut term).await?;
     tui::utils::restore()?;
 
     return Ok(res);
