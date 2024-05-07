@@ -11,7 +11,9 @@ use ratatui::{
 use sqlx::{Pool, Sqlite};
 use tui_textarea::{Input, Key, TextArea};
 
-use super::utils::Tui;
+use crate::db::db_mac::NotesMac;
+
+use super::{user_messages::UserMessage, utils::Tui};
 
 #[derive(PartialEq, Debug, Default, Clone, Copy)]
 pub(crate) enum AppState {
@@ -25,6 +27,7 @@ pub(crate) struct App<'a> {
     pub(crate) state: AppState,
     pub(crate) db: Pool<Sqlite>,
     pub(crate) note_editor: TextArea<'a>,
+    pub(crate) user_message: UserMessage,
 }
 
 impl<'a> App<'a> {
@@ -33,13 +36,16 @@ impl<'a> App<'a> {
             state: AppState::default(),
             db,
             note_editor: TextArea::default(),
+            user_message: UserMessage::welcome(),
         }
     }
-    pub fn run(&mut self, terminal: &mut Tui) -> Result<()> {
+    pub async fn run(&mut self, terminal: &mut Tui) -> Result<()> {
         // MAIN PROGRAM LOOP
         while self.state != AppState::Exit {
             terminal.draw(|frame| self.clone().render_frame(frame))?;
-            self.handle_events().wrap_err("handle events failed")?;
+            let result = self.handle_events().await;
+
+            result.wrap_err("handle events failed")?;
         }
 
         Ok(())
@@ -49,25 +55,40 @@ impl<'a> App<'a> {
         frame.render_widget(self, frame.size());
     }
 
-    fn handle_events(&mut self) -> Result<()> {
+    async fn handle_events(&mut self) -> Result<()> {
         match event::read()? {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => self
-                .handle_key_event(key_event.into())
-                .wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}")),
+            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
+                let result = self.handle_key_event(key_event.into()).await;
+                result.wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"))
+            }
             _ => Ok(()),
         }
     }
 
-    pub(crate) fn handle_key_event(&mut self, input: Input) -> Result<()> {
+    async fn handle_key_event(&mut self, input: Input) -> Result<()> {
         match input {
             Input { key: Key::Esc, .. } => {
                 self.exit();
+            }
+            Input {
+                key: Key::Char('s'),
+                alt: true,
+                ..
+            } => {
+                self.save_note().await?;
             }
             input => {
                 self.note_editor.input(input);
             }
         };
         Ok(())
+    }
+
+    async fn save_note(&self) -> Result<()> {
+        let note = self.note_editor.lines().join("\n");
+        let result = NotesMac::save_note(&self.db, note).await;
+
+        return result;
     }
 
     fn exit(&mut self) {
