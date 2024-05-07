@@ -11,16 +11,13 @@ pub(crate) async fn create_db() -> Result<SqlitePool, DbError> {
         .await
         .map_err(|e| create_db_error(e.to_string()))?;
 
-    println!("conn: {:?}", conn);
     let _schema_query = sqlx::query(
         "CREATE TABLE IF NOT EXISTS notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            title TEXT NOT NULL,
-            content TEXT NOT NULL,
-            links TEXT
+            content TEXT
         );",
     )
-    .fetch_optional(&conn)
+    .execute(&conn)
     .await?;
 
     Ok(conn)
