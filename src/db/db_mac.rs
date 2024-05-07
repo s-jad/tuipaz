@@ -12,16 +12,15 @@ use sqlx::SqlitePool;
     Serialize,
     Deserialize,
 )]
-
 pub(crate) struct Note {
     pub(crate) id: i64,
-    pub(crate) note: String,
+    pub(crate) content: String,
 }
 
 #[derive(Debug)]
-pub(crate) struct NotesMac;
+pub(crate) struct DbMac;
 
-impl NotesMac {
+impl DbMac {
     pub(crate) async fn save_note(db: &SqlitePool, note: String) -> Result<()> {
         let result = sqlx::query!("INSERT INTO notes (content) VALUES (?)", note)
             .execute(db)
