@@ -28,6 +28,9 @@ impl AppMac {
                 Input { key: Key::Esc, .. } => {
                     Self::show_exit_screen(app);
                 }
+                Input { key: Key::Tab, .. } => {
+                    Self::switch_btns(app);
+                }
                 Input {
                     key: Key::Char('n'),
                     ..
@@ -38,7 +41,7 @@ impl AppMac {
                     key: Key::Char('l'),
                     ..
                 } => {
-                    Self::load_note(app).await?;
+                    //Self::load_note(app).await?;
                 }
                 _ => {}
             },
@@ -107,30 +110,45 @@ impl AppMac {
         return result;
     }
 
-    async fn load_note(app: &mut App<'_>) -> Result<()> {
-        let result = DbMac::load_note(&app.db, note).await;
+    //async fn load_note(app: &mut App<'_>) -> Result<()> {
+    //    let result = DbMac::load_note(&app.db, note).await;
 
-        match &result {
-            Ok(_) => {}
-            Err(err) => {
-                let new_msg = UserMessage::new(
-                    format!("Error saving note!: {:?}", err),
-                    true,
-                    2,
-                    MessageType::Error,
-                );
-                //app.user_msg = new_msg;
-                app.screen = CurrentScreen::Popup;
-            }
-        }
-        return result;
-    }
+    //    match &result {
+    //        Ok(_) => {}
+    //        Err(err) => {
+    //            let new_msg = UserMessage::new(
+    //                format!("Error saving note!: {:?}", err),
+    //                true,
+    //                2,
+    //                MessageType::Error,
+    //            );
+    //            //app.user_msg = new_msg;
+    //            app.screen = CurrentScreen::Popup;
+    //        }
+    //    }
+    //    return result;
+    //}
     fn init_note(app: &mut App<'_>) {
         let note = app.editor.body.lines().join("\n");
     }
 
     fn show_exit_screen(app: &mut App) {
         app.screen = CurrentScreen::Exiting;
+    }
+
+    fn switch_btns(app: &mut App) {
+        let inactive_btn = app
+            .btns
+            .get_mut(&app.btn_idx)
+            .expect("Selected btn should exist");
+        inactive_btn.deactivate();
+
+        app.btn_idx = (app.btn_idx + 1) % (app.btns.len()) as u8;
+        let active_btn = app
+            .btns
+            .get_mut(&app.btn_idx)
+            .expect("Selected btn should exist");
+        active_btn.activate();
     }
 
     fn exit(app: &mut App) {
