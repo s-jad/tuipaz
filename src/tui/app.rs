@@ -1,8 +1,15 @@
+use std::collections::HashMap;
+
 use color_eyre::eyre::{Context, Result};
 use sqlx::{Pool, Sqlite};
 use tui_textarea::TextArea;
 
-use super::{events::AppMac, ui::ui, utils::Tui};
+use super::{
+    buttons::{Button, ButtonState},
+    events::AppMac,
+    ui::ui,
+    utils::Tui,
+};
 
 #[derive(PartialEq, Debug, Default, Clone, Copy)]
 pub(crate) enum AppState {
@@ -31,6 +38,8 @@ pub(crate) struct App<'a> {
     pub(crate) screen: CurrentScreen,
     pub(crate) editor: Editor<'a>,
     pub(crate) db: Pool<Sqlite>,
+    pub(crate) btns: HashMap<u8, Button>,
+    pub(crate) btn_idx: u8,
 }
 
 impl<'a> App<'a> {
@@ -43,6 +52,11 @@ impl<'a> App<'a> {
                 body: TextArea::default(),
             },
             db,
+            btns: HashMap::from([
+                (0, Button::new("New".to_owned(), ButtonState::Active)),
+                (1, Button::new("Load".to_owned(), ButtonState::Inactive)),
+            ]),
+            btn_idx: 0,
         }
     }
 }
