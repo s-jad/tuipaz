@@ -24,18 +24,69 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
 
-    let popup_block = Block::default()
+    let two_btn_split = [
+        Constraint::Percentage(10),
+        Constraint::Percentage(30),
+        Constraint::Percentage(10),
+        Constraint::Percentage(30),
+        Constraint::Percentage(10),
+    ];
+
+    // Split the main area into three sections:
+    // - The top section for title.
+    // - The middle section for button labels.
+    // - The bottom section for buttons.
+    let layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(&[
+            Constraint::Min(20),        // Title section
+            Constraint::Percentage(20), // button labels
+            Constraint::Percentage(0),  // buttons
+        ])
+        .split(area);
+
+    let welcome_block = Block::default()
         .title("Welcome to Tuipaz!")
         .borders(Borders::NONE)
-        .style(Style::default().bg(Color::DarkGray));
+        .style(Style::default())
+        .title_alignment(Alignment::Center);
 
-    let welcome_text = Text::styled("Welcome to Tuipaz!", Style::default().fg(Color::Red))
-        .alignment(Alignment::Center);
+    welcome_block.render(layout[0], buf);
 
-    Paragraph::new(welcome_text)
-        .block(popup_block)
+    let btn_label_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(&two_btn_split)
+        .split(layout[1]);
+
+    let btn_layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(&two_btn_split)
+        .split(layout[2]);
+
+    let new_note_btn_text =
+        Text::styled("Start a new note", Style::default()).alignment(Alignment::Center);
+    let load_note_btn_text =
+        Text::styled("Load a note", Style::default()).alignment(Alignment::Center);
+
+    Paragraph::new(new_note_btn_text)
+        .block(Block::default().borders(Borders::ALL))
         .wrap(Wrap { trim: false })
-        .render(centered_rect(60, 25, area), buf);
+        .render(btn_label_layout[1], buf);
+
+    Paragraph::new(load_note_btn_text)
+        .block(Block::default().borders(Borders::ALL))
+        .wrap(Wrap { trim: false })
+        .render(btn_label_layout[3], buf);
+
+    Paragraph::new(new_note_btn_text)
+        .block(Block::default().borders(Borders::ALL))
+        .wrap(Wrap { trim: false })
+        .render(btn_layout[1], buf);
+
+    Paragraph::new(load_note_btn_text)
+        .block(Block::default().borders(Borders::ALL))
+        .wrap(Wrap { trim: false })
+        .render(btn_layout[3], buf);
 }
 
 fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
