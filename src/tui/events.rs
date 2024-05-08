@@ -24,6 +24,24 @@ impl AppMac {
 
     async fn handle_key_event(app: &mut App<'_>, input: Input) -> Result<()> {
         match app.screen {
+            CurrentScreen::Welcome => match input {
+                Input { key: Key::Esc, .. } => {
+                    Self::show_exit_screen(app);
+                }
+                Input {
+                    key: Key::Char('n'),
+                    ..
+                } => {
+                    Self::init_note(app);
+                }
+                Input {
+                    key: Key::Char('l'),
+                    ..
+                } => {
+                    Self::load_note(app).await?;
+                }
+                _ => {}
+            },
             CurrentScreen::Main => match input {
                 Input { key: Key::Esc, .. } => {
                     Self::show_exit_screen(app);
@@ -36,7 +54,7 @@ impl AppMac {
                     Self::save_note(app).await?;
                 }
                 input => {
-                    app.editor.input(input);
+                    app.editor.body.input(input);
                 }
             },
             CurrentScreen::Popup => match input {
@@ -65,7 +83,7 @@ impl AppMac {
     }
 
     async fn save_note(app: &mut App<'_>) -> Result<()> {
-        let note = app.editor.lines().join("\n");
+        let note = app.editor.body.lines().join("\n");
         let result = DbMac::save_note(&app.db, note).await;
 
         match &result {
@@ -87,6 +105,28 @@ impl AppMac {
             }
         }
         return result;
+    }
+
+    async fn load_note(app: &mut App<'_>) -> Result<()> {
+        let result = DbMac::load_note(&app.db, note).await;
+
+        match &result {
+            Ok(_) => {}
+            Err(err) => {
+                let new_msg = UserMessage::new(
+                    format!("Error saving note!: {:?}", err),
+                    true,
+                    2,
+                    MessageType::Error,
+                );
+                //app.user_msg = new_msg;
+                app.screen = CurrentScreen::Popup;
+            }
+        }
+        return result;
+    }
+    fn init_note(app: &mut App<'_>) {
+        let note = app.editor.body.lines().join("\n");
     }
 
     fn show_exit_screen(app: &mut App) {
