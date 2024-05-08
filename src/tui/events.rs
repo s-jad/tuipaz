@@ -6,6 +6,7 @@ use crate::db::db_mac::DbMac;
 
 use super::{
     app::{App, AppState, CurrentScreen},
+    buttons::ButtonAction,
     user_messages::{MessageType, UserMessage},
 };
 
@@ -30,6 +31,11 @@ impl AppMac {
                 }
                 Input { key: Key::Tab, .. } => {
                     Self::switch_btns(app);
+                }
+                Input {
+                    key: Key::Enter, ..
+                } => {
+                    Self::btn_action(app);
                 }
                 Input {
                     key: Key::Char('n'),
@@ -59,6 +65,12 @@ impl AppMac {
                 input => {
                     app.editor.body.input(input);
                 }
+            },
+            CurrentScreen::LoadNote => match input {
+                Input { key: Key::Esc, .. } => {
+                    app.screen = CurrentScreen::Main;
+                }
+                _ => {}
             },
             CurrentScreen::Popup => match input {
                 Input { key: Key::Esc, .. } => {
@@ -149,6 +161,22 @@ impl AppMac {
             .get_mut(&app.btn_idx)
             .expect("Selected btn should exist");
         active_btn.activate();
+    }
+
+    fn btn_action(app: &mut App) {
+        let active_btn = app
+            .btns
+            .get(&app.btn_idx)
+            .expect("Selected btn should exist");
+
+        match active_btn.get_action() {
+            ButtonAction::RenderMainScreen => {
+                app.screen = CurrentScreen::Main;
+            }
+            ButtonAction::RenderLoadNoteScreen => {
+                app.screen = CurrentScreen::LoadNote;
+            }
+        }
     }
 
     fn exit(app: &mut App) {
