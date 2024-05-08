@@ -8,6 +8,7 @@ use ratatui::{
 
 use super::{
     app::{App, CurrentScreen},
+    buttons::{Button, ButtonState},
     user_messages::centered_rect,
 };
 
@@ -78,15 +79,8 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
         .wrap(Wrap { trim: false })
         .render(btn_label_layout[3], buf);
 
-    Paragraph::new(new_note_btn_text)
-        .block(Block::default().borders(Borders::ALL))
-        .wrap(Wrap { trim: false })
-        .render(btn_layout[1], buf);
-
-    Paragraph::new(load_note_btn_text)
-        .block(Block::default().borders(Borders::ALL))
-        .wrap(Wrap { trim: false })
-        .render(btn_layout[3], buf);
+    Button::new("New".to_owned(), ButtonState::Active).render(btn_layout[1], buf);
+    Button::new("Load".to_owned(), ButtonState::Active).render(btn_layout[3], buf);
 }
 
 fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
@@ -103,7 +97,7 @@ fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
         .constraints(&[Constraint::Min(16), Constraint::Percentage(0)])
         .split(layout[0]);
 
-    let title_input_block = Block::default()
+    let title_block = Block::default()
         .title(Title::from("Note Title").alignment(Alignment::Center))
         .title_style(Style::default().add_modifier(Modifier::BOLD))
         .borders(Borders::ALL)
@@ -118,9 +112,9 @@ fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
 
     // Set title textarea
     app.editor.title.set_alignment(Alignment::Center);
-    app.editor.title.set_block(editor_block);
-    let editor_widget = app.editor.title.widget();
-    editor_widget.render(editor_layout[0], buf);
+    app.editor.title.set_block(title_block);
+    let title_widget = app.editor.title.widget();
+    title_widget.render(editor_layout[0], buf);
 
     // Set note body textarea
     app.editor.body.set_block(editor_block);
