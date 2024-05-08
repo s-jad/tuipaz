@@ -5,7 +5,7 @@ use sqlx::{Pool, Sqlite};
 use tui_textarea::TextArea;
 
 use super::{
-    buttons::{Button, ButtonState},
+    buttons::{Button, ButtonAction, ButtonState},
     events::AppMac,
     ui::ui,
     utils::Tui,
@@ -22,6 +22,7 @@ pub(crate) enum AppState {
 pub(crate) enum CurrentScreen {
     Welcome,
     Main,
+    LoadNote,
     Popup,
     Exiting,
 }
@@ -53,8 +54,22 @@ impl<'a> App<'a> {
             },
             db,
             btns: HashMap::from([
-                (0, Button::new("New".to_owned(), ButtonState::Active)),
-                (1, Button::new("Load".to_owned(), ButtonState::Inactive)),
+                (
+                    0,
+                    Button::new(
+                        "New".to_owned(),
+                        ButtonState::Active,
+                        ButtonAction::RenderMainScreen,
+                    ),
+                ),
+                (
+                    1,
+                    Button::new(
+                        "Load".to_owned(),
+                        ButtonState::Inactive,
+                        ButtonAction::RenderLoadNoteScreen,
+                    ),
+                ),
             ]),
             btn_idx: 0,
         }
