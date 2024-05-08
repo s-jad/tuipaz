@@ -5,22 +5,33 @@ use ratatui::{
     widgets::{Block, Borders, Paragraph, Widget, Wrap},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum ButtonState {
     Active,
     Clicked,
     Inactive,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum ButtonAction {
+    RenderMainScreen,
+    RenderLoadNoteScreen,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Button {
     pub(crate) text: String,
     state: ButtonState,
+    action: ButtonAction,
 }
 
 impl Button {
-    pub(crate) fn new(text: String, state: ButtonState) -> Self {
-        Self { text, state }
+    pub(crate) fn new(text: String, state: ButtonState, action: ButtonAction) -> Self {
+        Self {
+            text,
+            state,
+            action,
+        }
     }
 
     pub(crate) fn activate(&mut self) {
@@ -29,6 +40,10 @@ impl Button {
 
     pub(crate) fn deactivate(&mut self) {
         self.state = ButtonState::Inactive;
+    }
+
+    pub(crate) fn get_action(&self) -> ButtonAction {
+        self.action
     }
 }
 
