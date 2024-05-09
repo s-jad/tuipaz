@@ -6,8 +6,10 @@ use tui_textarea::TextArea;
 
 use super::{
     buttons::{Button, ButtonAction, ButtonState},
-    events::AppMac,
+    events::Events,
+    inputs::{InputAction, InputState, UserInput},
     ui::ui,
+    user_messages::UserMessage,
     utils::Tui,
 };
 
@@ -19,9 +21,10 @@ pub(crate) enum AppState {
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
-pub(crate) enum CurrentScreen {
+pub(crate) enum Screen {
     Welcome,
     Main,
+    NewNote,
     LoadNote,
     Popup,
     Exiting,
@@ -29,27 +32,31 @@ pub(crate) enum CurrentScreen {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Editor<'a> {
-    pub(crate) title: TextArea<'a>,
+    pub(crate) title: String,
     pub(crate) body: TextArea<'a>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(crate) struct App<'a> {
     pub(crate) state: AppState,
-    pub(crate) screen: CurrentScreen,
+    pub(crate) current_screen: Screen,
+    pub(crate) prev_screen: Screen,
     pub(crate) editor: Editor<'a>,
     pub(crate) db: Pool<Sqlite>,
     pub(crate) btns: HashMap<u8, Button>,
     pub(crate) btn_idx: u8,
+    pub(crate) user_input: UserInput<'a>,
+    pub(crate) user_msg: UserMessage,
 }
 
 impl<'a> App<'a> {
     pub fn new(db: Pool<Sqlite>) -> Self {
         Self {
             state: AppState::default(),
-            screen: CurrentScreen::Welcome,
+            current_screen: Screen::Welcome,
+            prev_screen: Screen::Welcome,
             editor: Editor {
-                title: TextArea::default(),
+                title: "New note".to_owned(),
                 body: TextArea::default(),
             },
             db,
@@ -59,7 +66,7 @@ impl<'a> App<'a> {
                     Button::new(
                         "New".to_owned(),
                         ButtonState::Active,
-                        ButtonAction::RenderMainScreen,
+                        ButtonAction::RenderNewNoteScreen,
                     ),
                 ),
                 (
@@ -72,6 +79,8 @@ impl<'a> App<'a> {
                 ),
             ]),
             btn_idx: 0,
+            user_input: UserInput::new(InputState::Active, InputAction::SubmitNoteTitle),
+            user_msg: UserMessage::welcome(),
         }
     }
 }
@@ -80,7 +89,7 @@ pub(crate) async fn run(app: &mut App<'_>, terminal: &mut Tui) -> Result<()> {
     // MAIN PROGRAM LOOP
     while app.state != AppState::Exit {
         terminal.draw(|frame| ui(app, frame))?;
-        let result = AppMac::handle_events(app).await;
+        let result = Events::handle_events(app).await;
 
         result.wrap_err("handle events failed")?;
     }
