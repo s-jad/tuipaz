@@ -14,6 +14,7 @@ pub(crate) async fn create_db() -> Result<SqlitePool, DbError> {
     let _schema_query = sqlx::query(
         "CREATE TABLE IF NOT EXISTS notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
             content TEXT
         );",
     )
