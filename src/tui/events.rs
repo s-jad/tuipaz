@@ -5,14 +5,15 @@ use tui_textarea::{Input, Key};
 use crate::db::db_mac::DbMac;
 
 use super::{
-    app::{App, AppState, CurrentScreen},
+    app::{App, AppState, Screen},
     buttons::ButtonAction,
+    inputs::{InputAction, InputState, UserInput},
     user_messages::{MessageType, UserMessage},
 };
 
-pub(crate) struct AppMac {}
+pub(crate) struct Events {}
 
-impl AppMac {
+impl Events {
     pub(crate) async fn handle_events(app: &mut App<'_>) -> Result<()> {
         match event::read()? {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
@@ -24,8 +25,8 @@ impl AppMac {
     }
 
     async fn handle_key_event(app: &mut App<'_>, input: Input) -> Result<()> {
-        match app.screen {
-            CurrentScreen::Welcome => match input {
+        match app.current_screen {
+            Screen::Welcome => match input {
                 Input { key: Key::Esc, .. } => {
                     Self::show_exit_screen(app);
                 }
@@ -51,7 +52,7 @@ impl AppMac {
                 }
                 _ => {}
             },
-            CurrentScreen::Main => match input {
+            Screen::Main => match input {
                 Input { key: Key::Esc, .. } => {
                     Self::show_exit_screen(app);
                 }
@@ -66,19 +67,32 @@ impl AppMac {
                     app.editor.body.input(input);
                 }
             },
-            CurrentScreen::LoadNote => match input {
+            Screen::NewNote => match input {
                 Input { key: Key::Esc, .. } => {
-                    app.screen = CurrentScreen::Main;
+                    Self::show_exit_screen(app);
+                }
+                Input {
+                    key: Key::Enter, ..
+                } => {
+                    Self::input_action(app);
+                }
+                input => {
+                    app.user_input.text.input(input);
+                }
+            },
+            Screen::LoadNote => match input {
+                Input { key: Key::Esc, .. } => {
+                    app.current_screen = Screen::Main;
                 }
                 _ => {}
             },
-            CurrentScreen::Popup => match input {
+            Screen::Popup => match input {
                 Input { key: Key::Esc, .. } => {
-                    app.screen = CurrentScreen::Main;
+                    app.current_screen = app.prev_screen;
                 }
                 _ => {}
             },
-            CurrentScreen::Exiting => match input {
+            Screen::Exiting => match input {
                 Input {
                     key: Key::Char('y'),
                     ..
@@ -89,7 +103,7 @@ impl AppMac {
                     key: Key::Char('n'),
                     ..
                 } => {
-                    app.screen = CurrentScreen::Main;
+                    app.current_screen = Screen::Main;
                 }
                 _ => {}
             },
@@ -99,24 +113,21 @@ impl AppMac {
 
     async fn save_note(app: &mut App<'_>) -> Result<()> {
         let note = app.editor.body.lines().join("\n");
-        let result = DbMac::save_note(&app.db, note).await;
+        let result = DbMac::save_note(&app.db, note, app.editor.title.clone()).await;
 
         match &result {
             Ok(_) => {
-                let new_msg =
-                    UserMessage::new("Note saved!".to_string(), true, 2, MessageType::Info);
-                //app.user_msg = new_msg;
-                app.screen = CurrentScreen::Popup;
+                let new_msg = UserMessage::new("Note saved!".to_string(), MessageType::Info);
+                app.user_msg = new_msg;
+                app.prev_screen = app.current_screen;
+                app.current_screen = Screen::Popup;
             }
             Err(err) => {
-                let new_msg = UserMessage::new(
-                    format!("Error saving note!: {:?}", err),
-                    true,
-                    2,
-                    MessageType::Error,
-                );
-                //app.user_msg = new_msg;
-                app.screen = CurrentScreen::Popup;
+                let new_msg =
+                    UserMessage::new(format!("Error saving note!: {:?}", err), MessageType::Error);
+                app.user_msg = new_msg;
+                app.prev_screen = app.current_screen;
+                app.current_screen = Screen::Popup;
             }
         }
         return result;
@@ -135,17 +146,13 @@ impl AppMac {
     //                MessageType::Error,
     //            );
     //            //app.user_msg = new_msg;
-    //            app.screen = CurrentScreen::Popup;
+    //            app.screen = Screen::Popup;
     //        }
     //    }
     //    return result;
     //}
     fn init_note(app: &mut App<'_>) {
         let note = app.editor.body.lines().join("\n");
-    }
-
-    fn show_exit_screen(app: &mut App) {
-        app.screen = CurrentScreen::Exiting;
     }
 
     fn switch_btns(app: &mut App) {
@@ -166,17 +173,42 @@ impl AppMac {
     fn btn_action(app: &mut App) {
         let active_btn = app
             .btns
-            .get(&app.btn_idx)
+            .get_mut(&app.btn_idx)
             .expect("Selected btn should exist");
+
+        active_btn.clicked();
 
         match active_btn.get_action() {
             ButtonAction::RenderMainScreen => {
-                app.screen = CurrentScreen::Main;
+                app.current_screen = Screen::Main;
+            }
+            ButtonAction::RenderNewNoteScreen => {
+                app.user_input = UserInput::new(InputState::Active, InputAction::SubmitNoteTitle);
+                app.current_screen = Screen::NewNote;
             }
             ButtonAction::RenderLoadNoteScreen => {
-                app.screen = CurrentScreen::LoadNote;
+                app.current_screen = Screen::LoadNote;
             }
         }
+    }
+
+    fn input_action(app: &mut App) {
+        app.user_input.set_state(InputState::Submit);
+
+        match app.user_input.get_action() {
+            InputAction::SubmitNoteTitle => {
+                let title = app.user_input.text.lines();
+
+                let formatted = format!(" {} ", &title[0]);
+                app.editor.title = formatted;
+
+                app.current_screen = Screen::Main;
+            }
+        }
+    }
+
+    fn show_exit_screen(app: &mut App) {
+        app.current_screen = Screen::Exiting;
     }
 
     fn exit(app: &mut App) {
