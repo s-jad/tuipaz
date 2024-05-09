@@ -2,22 +2,25 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Text},
-    widgets::{block::Title, Block, BorderType, Borders, Paragraph, Widget, Wrap},
+    widgets::{block::Title, Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
     Frame,
 };
+use tui_textarea::TextArea;
 
 use super::{
-    app::{App, CurrentScreen},
-    buttons::{Button, ButtonState},
+    app::{App, Screen},
+    inputs::UserInput,
     user_messages::centered_rect,
 };
 
 pub(crate) fn ui(app: &mut App, frame: &mut Frame) {
-    match app.screen {
-        CurrentScreen::Welcome => render_welcome_screen(app, frame),
-        CurrentScreen::Main => render_main_screen(app, frame),
-        CurrentScreen::Popup => render_popup(app, frame),
-        CurrentScreen::Exiting => render_exit_screen(frame),
+    match app.current_screen {
+        Screen::Welcome => render_welcome_screen(app, frame),
+        Screen::Main => render_main_screen(app, frame),
+        Screen::NewNote => render_new_note_screen(app, frame),
+        Screen::LoadNote => render_load_note_screen(app, frame),
+        Screen::Popup => render_popup(app, frame),
+        Screen::Exiting => render_exit_screen(frame),
     }
 }
 
@@ -40,9 +43,10 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(&[
-            Constraint::Min(20),        // Title section
+            Constraint::Min(1),         // Title section
             Constraint::Percentage(20), // button labels
-            Constraint::Percentage(0),  // buttons
+            Constraint::Percentage(20), // buffer between buttons and labels
+            Constraint::Percentage(60), // buttons
         ])
         .split(area);
 
@@ -79,8 +83,17 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
         .wrap(Wrap { trim: false })
         .render(btn_label_layout[3], buf);
 
-    Button::new("New".to_owned(), ButtonState::Active).render(btn_layout[1], buf);
-    Button::new("Load".to_owned(), ButtonState::Active).render(btn_layout[3], buf);
+    let new_note_btn = app
+        .btns
+        .get_mut(&0)
+        .expect("New note btn should be present");
+    new_note_btn.clone().render(btn_layout[1], buf);
+
+    let load_note_btn = app
+        .btns
+        .get_mut(&1)
+        .expect("Load note btn should be present");
+    load_note_btn.clone().render(btn_layout[3], buf);
 }
 
 fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
@@ -92,37 +105,21 @@ fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
         .constraints(&[Constraint::Percentage(80), Constraint::Percentage(20)])
         .split(area);
 
-    let editor_layout = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(&[Constraint::Min(16), Constraint::Percentage(0)])
-        .split(layout[0]);
-
-    let title_block = Block::default()
-        .title(Title::from("Note Title").alignment(Alignment::Center))
-        .title_style(Style::default().add_modifier(Modifier::BOLD))
-        .borders(Borders::ALL)
-        .border_type(BorderType::Thick);
+    let note_title = app.editor.title.clone();
 
     let editor_block = Block::default()
-        .title(Title::from("Note Editor").alignment(Alignment::Center))
+        .title(Title::from(note_title).alignment(Alignment::Left))
         .title_style(Style::default().add_modifier(Modifier::BOLD))
         .borders(Borders::ALL)
-        .border_type(BorderType::Thick)
+        .border_type(BorderType::Rounded)
         .title_bottom(Line::from(" <Esc> Quit "));
 
-    // Set title textarea
-    app.editor.title.set_alignment(Alignment::Center);
-    app.editor.title.set_block(title_block);
-    let title_widget = app.editor.title.widget();
-    title_widget.render(editor_layout[0], buf);
-
-    // Set note body textarea
     app.editor.body.set_block(editor_block);
     let editor_widget = app.editor.body.widget();
-    editor_widget.render(editor_layout[1], buf);
+    editor_widget.render(layout[0], buf);
 
     let files_block = Block::default()
-        .title(Title::from("File Explorer").alignment(Alignment::Center))
+        .title(Title::from(" File Explorer ").alignment(Alignment::Center))
         .title_style(Style::default().add_modifier(Modifier::BOLD))
         .borders(Borders::ALL)
         .border_type(BorderType::Thick);
@@ -136,23 +133,68 @@ fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
 }
 
 fn render_popup<'a>(app: &mut App<'a>, frame: &mut Frame) {
-    //   app.user_msg.clone().render(area, buf);
+    let area = frame.size();
+    let buf = frame.buffer_mut();
+    app.user_msg.clone().render(area, buf);
 }
 
-fn render_exit_screen<'a>(frame: &mut Frame) {
+fn render_exit_screen(frame: &mut Frame) {
     let area = frame.size();
+    frame.render_widget(Clear, area);
     let buf = frame.buffer_mut();
 
     let popup_block = Block::default()
         .title("Y/N")
-        .borders(Borders::NONE)
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .padding(Padding::new(0, 0, 1, 1))
+        .style(Style::default());
+
+    let exit_text = Text::styled(" Exit Tuipaz? (y/n)", Style::default().fg(Color::DarkGray));
+    // the `trim: false` will stop the text from being cut off when over the edge of the block
+    Paragraph::new(exit_text)
+        .block(popup_block)
+        .alignment(Alignment::Center)
+        .wrap(Wrap { trim: false })
+        .render(centered_rect(30, 14, area), buf);
+}
+
+fn render_load_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
+    let area = frame.size();
+    frame.render_widget(Clear, area);
+    let buf = frame.buffer_mut();
+
+    let load_note_block = Block::default()
+        .title(" Load Note ")
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .padding(Padding::new(1, 1, 1, 1))
         .style(Style::default().bg(Color::DarkGray));
 
     let exit_text = Text::styled("Exit Tuipaz? (y/n)", Style::default().fg(Color::Red))
         .alignment(Alignment::Center);
-    // the `trim: false` will stop the text from being cut off when over the edge of the block
+
     Paragraph::new(exit_text)
-        .block(popup_block)
+        .block(load_note_block)
         .wrap(Wrap { trim: false })
         .render(centered_rect(60, 25, area), buf);
+}
+
+fn render_new_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
+    let area = frame.size();
+    let buf = frame.buffer_mut();
+
+    let new_note_block = Block::default()
+        .title(" Note Title: ")
+        .title_bottom(Line::from(" <Enter> to submit "))
+        .borders(Borders::ALL)
+        .border_type(BorderType::Rounded)
+        .padding(Padding::new(1, 1, 1, 1))
+        .style(Style::default());
+
+    app.user_input.text.set_block(new_note_block);
+
+    let user_input_widget = app.user_input.text.widget();
+
+    user_input_widget.render(centered_rect(50, 20, area), buf);
 }
