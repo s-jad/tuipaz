@@ -5,7 +5,7 @@ use ratatui::{
     prelude::{Buffer, Rect},
     style::{Style, Stylize},
     text::Line,
-    widgets::{block::Title, Block, Borders, Paragraph, Widget, Wrap},
+    widgets::{block::Title, Block, BorderType, Borders, Paragraph, Widget, Wrap},
 };
 
 #[derive(Debug, Clone)]
@@ -18,9 +18,6 @@ pub(crate) enum MessageType {
 #[derive(Debug, Clone)]
 pub(crate) struct UserMessage {
     pub(crate) msg: String,
-    pub(crate) show: bool,
-    pub(crate) start: Instant,
-    pub(crate) duration: Duration,
     pub(crate) typ: MessageType,
 }
 
@@ -28,21 +25,12 @@ impl UserMessage {
     pub(crate) fn welcome() -> Self {
         Self {
             msg: "Welcome to Tuipaz!".to_string(),
-            show: true,
-            start: Instant::now(),
-            duration: Duration::from_secs(3),
             typ: MessageType::Info,
         }
     }
 
-    pub(crate) fn new(msg: String, show: bool, secs: u64, typ: MessageType) -> Self {
-        Self {
-            msg,
-            show,
-            start: Instant::now(),
-            duration: Duration::from_secs(secs),
-            typ,
-        }
+    pub(crate) fn new(msg: String, typ: MessageType) -> Self {
+        Self { msg, typ }
     }
 }
 
@@ -52,14 +40,17 @@ impl Widget for UserMessage {
         Self: Sized,
     {
         let (title, style) = match self.typ {
-            MessageType::Info => ("Info".to_string(), Style::new().blue().bold()),
-            MessageType::Warning => ("Warning".to_string(), Style::new().yellow().bold()),
-            MessageType::Error => ("Error".to_string(), Style::new().red().bold()),
+            MessageType::Info => (" Info ".to_string(), Style::new().blue().bold()),
+            MessageType::Warning => (" Warning ".to_string(), Style::new().yellow().bold()),
+            MessageType::Error => (" Error ".to_string(), Style::new().red().bold()),
         };
 
+        let bottom_title = " <Esc> Return to previous screen ".to_string();
         let popup_block = Block::default()
             .title(Title::from(title).alignment(Alignment::Center))
-            .borders(Borders::ALL);
+            .borders(Borders::ALL)
+            .title_bottom(Line::from(bottom_title))
+            .border_type(BorderType::Rounded);
 
         let popup_text = vec![Line::from(self.msg).style(style)];
 
