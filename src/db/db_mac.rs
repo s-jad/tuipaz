@@ -14,6 +14,7 @@ use sqlx::SqlitePool;
 )]
 pub(crate) struct Note {
     pub(crate) id: i64,
+    pub(crate) title: String,
     pub(crate) content: String,
 }
 
@@ -21,10 +22,14 @@ pub(crate) struct Note {
 pub(crate) struct DbMac;
 
 impl DbMac {
-    pub(crate) async fn save_note(db: &SqlitePool, note: String) -> Result<()> {
-        let result = sqlx::query!("INSERT INTO notes (content) VALUES (?)", note)
-            .execute(db)
-            .await;
+    pub(crate) async fn save_note(db: &SqlitePool, note: String, title: String) -> Result<()> {
+        let result = sqlx::query!(
+            "INSERT INTO notes (title, content) VALUES (?,?)",
+            title,
+            note
+        )
+        .execute(db)
+        .await;
 
         match result {
             Ok(_) => Ok(()),
