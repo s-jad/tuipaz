@@ -1,5 +1,6 @@
 pub(crate) mod app;
 pub(crate) mod buttons;
+pub(crate) mod editor;
 pub(crate) mod errors;
 pub(crate) mod events;
 pub(crate) mod inputs;
