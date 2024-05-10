@@ -2,7 +2,7 @@ use ratatui::{
     layout::Alignment,
     prelude::{Buffer, Rect},
     style::{Color, Style, Stylize},
-    widgets::{Block, BorderType, Borders, Paragraph, Widget, Wrap},
+    widgets::{Block, BorderType, Borders, Padding, Paragraph, Widget, Wrap},
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -35,16 +35,8 @@ impl Button {
         }
     }
 
-    pub(crate) fn activate(&mut self) {
-        self.state = ButtonState::Active;
-    }
-
-    pub(crate) fn deactivate(&mut self) {
-        self.state = ButtonState::Inactive;
-    }
-
-    pub(crate) fn clicked(&mut self) {
-        self.state = ButtonState::Clicked;
+    pub(crate) fn set_state(&mut self, new_state: ButtonState) {
+        self.state = new_state;
     }
 
     pub(crate) fn get_action(&self) -> ButtonAction {
@@ -57,32 +49,21 @@ impl Widget for Button {
     where
         Self: Sized,
     {
-        let (bg_clr, fg_clr, border_style) = match self.state {
-            ButtonState::Active => (
-                Color::Gray,
-                Color::DarkGray,
-                Style::default().bg(Color::Blue),
-            ),
-            ButtonState::Clicked => (
-                Color::Red,
-                Color::Gray,
-                Style::default().bold().bg(Color::Green),
-            ),
-            ButtonState::Inactive => (
-                Color::DarkGray,
-                Color::Gray,
-                Style::default().bg(Color::LightBlue).dim(),
-            ),
+        let (bg_clr, border_style) = match self.state {
+            ButtonState::Active => (Color::Gray, Style::default().bold()),
+            ButtonState::Clicked => (Color::Red, Style::default().bold()),
+            ButtonState::Inactive => (Color::DarkGray, Style::default().dim()),
         };
 
         let btn_block = Block::new()
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(border_style);
+            .border_style(border_style)
+            .padding(Padding::new(2, 2, 2, 2));
 
         let p = Paragraph::new(self.text)
-            .alignment(Alignment::Center)
-            .style(Style::default().fg(fg_clr).bg(bg_clr))
+            .centered()
+            .style(Style::default())
             .block(btn_block)
             .wrap(Wrap { trim: true });
 
