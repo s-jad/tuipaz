@@ -6,6 +6,7 @@ use tui_textarea::TextArea;
 
 use super::{
     buttons::{Button, ButtonAction, ButtonState},
+    editor::Editor,
     events::Events,
     inputs::{InputAction, InputState, UserInput},
     ui::ui,
@@ -30,12 +31,6 @@ pub(crate) enum Screen {
     Exiting,
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct Editor<'a> {
-    pub(crate) title: String,
-    pub(crate) body: TextArea<'a>,
-}
-
 #[derive(Debug)]
 pub(crate) struct App<'a> {
     pub(crate) state: AppState,
@@ -55,10 +50,7 @@ impl<'a> App<'a> {
             state: AppState::default(),
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
-            editor: Editor {
-                title: "New note".to_owned(),
-                body: TextArea::default(),
-            },
+            editor: Editor::new(" Untitled ".to_owned()),
             db,
             btns: HashMap::from([
                 (
