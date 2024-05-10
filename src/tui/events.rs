@@ -27,7 +27,11 @@ impl Events {
     async fn handle_key_event(app: &mut App<'_>, input: Input) -> Result<()> {
         match app.current_screen {
             Screen::Welcome => match input {
-                Input { key: Key::Esc, .. } => {
+                Input {
+                    key: Key::Char('q'),
+                    alt: true,
+                    ..
+                } => {
                     Self::show_exit_screen(app);
                 }
                 Input { key: Key::Tab, .. } => {
@@ -41,7 +45,11 @@ impl Events {
                 _ => {}
             },
             Screen::Main => match input {
-                Input { key: Key::Esc, .. } => {
+                Input {
+                    key: Key::Char('q'),
+                    alt: true,
+                    ..
+                } => {
                     Self::show_exit_screen(app);
                 }
                 Input {
@@ -56,7 +64,11 @@ impl Events {
                 }
             },
             Screen::NewNote => match input {
-                Input { key: Key::Esc, .. } => {
+                Input {
+                    key: Key::Char('q'),
+                    alt: true,
+                    ..
+                } => {
                     Self::show_exit_screen(app);
                 }
                 Input {
@@ -186,7 +198,6 @@ impl Events {
         match app.user_input.get_action() {
             InputAction::SubmitNoteTitle => {
                 let title = app.user_input.text.lines();
-
                 let formatted = format!(" {} ", &title[0]);
                 app.editor.set_title(formatted);
 
