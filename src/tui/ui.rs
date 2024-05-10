@@ -5,11 +5,9 @@ use ratatui::{
     widgets::{block::Title, Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
     Frame,
 };
-use tui_textarea::TextArea;
 
 use super::{
     app::{App, Screen},
-    inputs::UserInput,
     user_messages::centered_rect,
 };
 
@@ -29,11 +27,11 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
     let buf = frame.buffer_mut();
 
     let two_btn_split = [
-        Constraint::Percentage(10),
+        Constraint::Min(4),
         Constraint::Percentage(30),
-        Constraint::Percentage(10),
+        Constraint::Min(2),
         Constraint::Percentage(30),
-        Constraint::Percentage(10),
+        Constraint::Min(4),
     ];
 
     // Split the main area into three sections:
@@ -43,10 +41,9 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(&[
-            Constraint::Min(1),         // Title section
-            Constraint::Percentage(20), // button labels
-            Constraint::Percentage(20), // buffer between buttons and labels
-            Constraint::Percentage(60), // buttons
+            Constraint::Percentage(40), // Title section
+            Constraint::Percentage(20), // buttons
+            Constraint::Percentage(40), // Bottom padding
         ])
         .split(area);
 
@@ -58,30 +55,10 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
 
     welcome_block.render(layout[0], buf);
 
-    let btn_label_layout = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(&two_btn_split)
-        .split(layout[1]);
-
     let btn_layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints(&two_btn_split)
-        .split(layout[2]);
-
-    let new_note_btn_text =
-        Text::styled("Start a new note", Style::default()).alignment(Alignment::Center);
-    let load_note_btn_text =
-        Text::styled("Load a note", Style::default()).alignment(Alignment::Center);
-
-    Paragraph::new(new_note_btn_text)
-        .block(Block::default().borders(Borders::ALL))
-        .wrap(Wrap { trim: false })
-        .render(btn_label_layout[1], buf);
-
-    Paragraph::new(load_note_btn_text)
-        .block(Block::default().borders(Borders::ALL))
-        .wrap(Wrap { trim: false })
-        .render(btn_label_layout[3], buf);
+        .split(layout[1]);
 
     let new_note_btn = app
         .btns
@@ -105,18 +82,7 @@ fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
         .constraints(&[Constraint::Percentage(80), Constraint::Percentage(20)])
         .split(area);
 
-    let note_title = app.editor.title.clone();
-
-    let editor_block = Block::default()
-        .title(Title::from(note_title).alignment(Alignment::Left))
-        .title_style(Style::default().add_modifier(Modifier::BOLD))
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .title_bottom(Line::from(" <Esc> Quit "));
-
-    app.editor.body.set_block(editor_block);
-    let editor_widget = app.editor.body.widget();
-    editor_widget.render(layout[0], buf);
+    app.editor.clone().render(layout[0], buf);
 
     let files_block = Block::default()
         .title(Title::from(" File Explorer ").alignment(Alignment::Center))
@@ -156,7 +122,7 @@ fn render_exit_screen(frame: &mut Frame) {
         .block(popup_block)
         .alignment(Alignment::Center)
         .wrap(Wrap { trim: false })
-        .render(centered_rect(30, 14, area), buf);
+        .render(centered_rect(30, 15, area), buf);
 }
 
 fn render_load_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
