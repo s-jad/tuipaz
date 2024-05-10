@@ -6,7 +6,7 @@ use crate::db::db_mac::DbMac;
 
 use super::{
     app::{App, AppState, Screen},
-    buttons::ButtonAction,
+    buttons::{ButtonAction, ButtonState},
     inputs::{InputAction, InputState, UserInput},
     user_messages::{MessageType, UserMessage},
 };
@@ -38,18 +38,6 @@ impl Events {
                 } => {
                     Self::btn_action(app);
                 }
-                Input {
-                    key: Key::Char('n'),
-                    ..
-                } => {
-                    Self::init_note(app);
-                }
-                Input {
-                    key: Key::Char('l'),
-                    ..
-                } => {
-                    //Self::load_note(app).await?;
-                }
                 _ => {}
             },
             Screen::Main => match input {
@@ -64,7 +52,7 @@ impl Events {
                     Self::save_note(app).await?;
                 }
                 input => {
-                    app.editor.body.input(input);
+                    app.editor.handle_input(input);
                 }
             },
             Screen::NewNote => match input {
@@ -160,14 +148,14 @@ impl Events {
             .btns
             .get_mut(&app.btn_idx)
             .expect("Selected btn should exist");
-        inactive_btn.deactivate();
+        inactive_btn.set_state(ButtonState::Inactive);
 
         app.btn_idx = (app.btn_idx + 1) % (app.btns.len()) as u8;
         let active_btn = app
             .btns
             .get_mut(&app.btn_idx)
             .expect("Selected btn should exist");
-        active_btn.activate();
+        active_btn.set_state(ButtonState::Active);
     }
 
     fn btn_action(app: &mut App) {
@@ -176,7 +164,7 @@ impl Events {
             .get_mut(&app.btn_idx)
             .expect("Selected btn should exist");
 
-        active_btn.clicked();
+        active_btn.set_state(ButtonState::Clicked);
 
         match active_btn.get_action() {
             ButtonAction::RenderMainScreen => {
@@ -200,7 +188,7 @@ impl Events {
                 let title = app.user_input.text.lines();
 
                 let formatted = format!(" {} ", &title[0]);
-                app.editor.title = formatted;
+                app.editor.set_title(formatted);
 
                 app.current_screen = Screen::Main;
             }
