@@ -11,8 +11,15 @@ pub(crate) struct Editor<'a> {
     pub(crate) title: String,
     pub(crate) body: TextArea<'a>,
     pub(crate) mode: EditorMode,
-    pub(crate) block: Block<'a>,
     pub(crate) block_info: String,
+    pub(crate) prev_cursor: CursorPosition,
+}
+
+#[derive(Debug, Clone)]
+enum CursorPosition {
+    Head,
+    Middle(usize),
+    End,
 }
 
 #[derive(Debug, Clone)]
@@ -34,11 +41,12 @@ impl<'a> Editor<'a> {
         let editor_block = Block::default()
             .title(Title::from(title.clone()).alignment(Alignment::Left))
             .title_style(Style::default().add_modifier(Modifier::BOLD))
-            .title_bottom(Line::from(block_info.clone()))
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .padding(Padding::new(1, 1, 1, 1))
-            .title_bottom(Line::from(" <Esc> Quit <Alt-s> Save Note "));
+            .title_bottom(Line::from(
+                " <| NORMAL |> <Alt-q/s/l/n> Quit/Save/Load/New ",
+            ));
 
         body.set_block(editor_block.clone());
 
@@ -46,8 +54,8 @@ impl<'a> Editor<'a> {
             title,
             body,
             mode: EditorMode::Normal,
-            block: editor_block,
             block_info,
+            prev_cursor: CursorPosition::Head,
         }
     }
 
@@ -67,11 +75,96 @@ impl<'a> Editor<'a> {
     pub(crate) fn handle_input(&mut self, input: Input) {
         match self.mode {
             EditorMode::Insert => match input {
+                Input { key: Key::Esc, .. } => {
+                    self.set_mode(EditorMode::Normal);
+                }
                 input => {
                     self.body.input(input);
                 }
             },
             EditorMode::Normal => match input {
+                // Move left
+                Input {
+                    key: Key::Char('h'),
+                    ..
+                }
+                | Input { key: Key::Left, .. } => self.body.move_cursor(CursorMove::Back),
+                // Move Down
+                Input {
+                    key: Key::Char('j'),
+                    ..
+                } => self.body.move_cursor(CursorMove::Down),
+                Input { key: Key::Down, .. } => self.body.move_cursor(CursorMove::Down),
+                // Move Up
+                Input {
+                    key: Key::Char('k'),
+                    ..
+                }
+                | Input { key: Key::Up, .. } => self.body.move_cursor(CursorMove::Up),
+                // Move Right
+                Input {
+                    key: Key::Char('l'),
+                    ..
+                }
+                | Input {
+                    key: Key::Right, ..
+                } => self.body.move_cursor(CursorMove::Forward),
+                Input {
+                    key: Key::Char('w'),
+                    ..
+                } => self.body.move_cursor(CursorMove::WordForward),
+                Input {
+                    key: Key::Char('b'),
+                    ctrl: false,
+                    ..
+                } => self.body.move_cursor(CursorMove::WordBack),
+                Input {
+                    key: Key::Char('^'),
+                    ..
+                } => self.body.move_cursor(CursorMove::Head),
+                Input {
+                    key: Key::Char('$'),
+                    ..
+                } => self.body.move_cursor(CursorMove::End),
+                Input {
+                    key: Key::Char('D'),
+                    ..
+                } => {
+                    self.body.delete_line_by_end();
+                }
+                Input {
+                    key: Key::Char('C'),
+                    ..
+                } => {
+                    self.body.delete_line_by_end();
+                    self.set_mode(EditorMode::Insert);
+                }
+                Input {
+                    key: Key::Char('p'),
+                    ..
+                } => {
+                    self.body.paste();
+                }
+                Input {
+                    key: Key::Char('u'),
+                    ctrl: false,
+                    ..
+                } => {
+                    self.body.undo();
+                }
+                Input {
+                    key: Key::Char('r'),
+                    ctrl: false,
+                    ..
+                } => {
+                    self.body.redo();
+                }
+                Input {
+                    key: Key::Char('x'),
+                    ..
+                } => {
+                    self.body.delete_next_char();
+                }
                 Input {
                     key: Key::Char('a'),
                     ctrl: false,
@@ -84,6 +177,7 @@ impl<'a> Editor<'a> {
                     ctrl: false,
                     ..
                 } => {
+                    self.body.move_cursor(CursorMove::End);
                     self.set_mode(EditorMode::Insert);
                 }
                 Input {
@@ -98,6 +192,7 @@ impl<'a> Editor<'a> {
                     ctrl: false,
                     ..
                 } => {
+                    self.body.move_cursor(CursorMove::Head);
                     self.set_mode(EditorMode::Insert);
                 }
                 Input {
@@ -105,6 +200,7 @@ impl<'a> Editor<'a> {
                     ctrl: false,
                     ..
                 } => {
+                    self.body.start_selection();
                     self.set_mode(EditorMode::Visual);
                 }
                 Input {
@@ -119,7 +215,12 @@ impl<'a> Editor<'a> {
                 }
                 _ => {}
             },
-            EditorMode::Visual => {}
+            EditorMode::Visual => match input {
+                Input { key: Key::Esc, .. } => {
+                    self.set_mode(EditorMode::Normal);
+                }
+                _ => {}
+            },
         }
     }
 }
@@ -129,7 +230,7 @@ impl<'a> Widget for Editor<'a> {
     where
         Self: Sized,
     {
-        let tb = format!(" {}  <Esc> Quit <Alt-S> Save ", self.block_info);
+        let tb = format!(" {}  <Alt-q/s/l/n> Quit/Save/Load/New ", self.block_info);
 
         let editor_block = Block::default()
             .title(Title::from(self.title).alignment(Alignment::Left))
