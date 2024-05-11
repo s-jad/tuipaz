@@ -416,14 +416,12 @@ impl<'a> Editor<'a> {
                         self.body.move_cursor(CursorMove::Head);
                         self.body.delete_line_by_end();
                         self.body.delete_newline();
-                        //self.body.move_cursor(CursorMove::Up);
                     }
                     self.num_buf.clear();
                 } else {
                     self.body.move_cursor(CursorMove::Head);
                     self.body.delete_line_by_end();
                     self.body.delete_newline();
-                    //self.body.move_cursor(CursorMove::Up);
                 }
                 self.cmd_buf.clear();
             }
@@ -458,11 +456,11 @@ impl<'a> Editor<'a> {
                 if num_buf_len != 0 {
                     let num = self.get_num_from_buf(num_buf_len);
                     for _ in 0..num {
-                        self.body.delete_word();
+                        self.body.delete_next_word();
                     }
                     self.num_buf.clear();
                 } else {
-                    self.body.delete_word();
+                    self.body.delete_next_word();
                 }
                 self.cmd_buf.clear();
             }
