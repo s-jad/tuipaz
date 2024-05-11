@@ -1,7 +1,7 @@
 use ratatui::{
     layout::Alignment,
-    style::{Color, Modifier, Style},
-    text::Line,
+    style::{Color, Modifier, Style, Stylize},
+    text::{Line, Span},
     widgets::{block::Title, Block, BorderType, Borders, Padding, Widget},
 };
 use tui_textarea::{CursorMove, Input, Key, TextArea};
@@ -583,12 +583,23 @@ impl<'a> Widget for Editor<'a> {
     where
         Self: Sized,
     {
-        let tb = format!(" {}  <Alt-q/s/l/n> Quit/Save/Load/New ", self.block_info);
+        let info_style = match self.mode {
+            EditorMode::Insert => Style::default()
+                .add_modifier(Modifier::BOLD)
+                .fg(Color::Blue),
+            EditorMode::Normal => Style::default()
+                .add_modifier(Modifier::BOLD)
+                .fg(Color::Yellow),
+            EditorMode::Visual => Style::default().add_modifier(Modifier::BOLD).fg(Color::Red),
+        };
+
+        let mode_span = Span::styled(self.block_info, info_style);
+        let key_hint_span = Span::styled(" <Alt-q/s/l/n> Quit/Save/Load/New ", Style::default());
 
         let editor_block = Block::default()
             .title(Title::from(self.title).alignment(Alignment::Left))
             .title_style(Style::default().add_modifier(Modifier::BOLD))
-            .title_bottom(Line::from(tb))
+            .title_bottom(Line::from(vec![mode_span, key_hint_span]))
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .padding(Padding::new(1, 1, 1, 1));
