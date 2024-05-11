@@ -150,17 +150,7 @@ fn render_new_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
 
-    let new_note_block = Block::default()
-        .title(" Note Title: ")
-        .title_bottom(Line::from(" <Enter> to submit "))
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .padding(Padding::new(1, 1, 1, 1))
-        .style(Style::default());
-
-    app.user_input.text.set_block(new_note_block);
-
-    let user_input_widget = app.user_input.text.widget();
-
-    user_input_widget.render(centered_rect(50, 20, area), buf);
+    app.user_input
+        .clone()
+        .render(centered_rect(50, 20, area), buf);
 }
