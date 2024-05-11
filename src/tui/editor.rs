@@ -52,6 +52,9 @@ impl<'a> Editor<'a> {
         body.set_max_histories(1000);
 
         let block_info = " <| NORMAL |> ".to_string();
+        let info_style = Style::default().bold().fg(Color::Yellow);
+        let mode_span = Span::styled(block_info.clone(), info_style);
+        let key_hint_span = Span::styled(" <Alt-q/s/l/n> Quit/Save/Load/New ", Style::default());
 
         let editor_block = Block::default()
             .title(Title::from(title.clone()).alignment(Alignment::Left))
@@ -59,9 +62,7 @@ impl<'a> Editor<'a> {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .padding(Padding::new(1, 1, 1, 1))
-            .title_bottom(Line::from(
-                " <| NORMAL |> <Alt-q/s/l/n> Quit/Save/Load/New ",
-            ));
+            .title_bottom(Line::from(vec![mode_span, key_hint_span]));
 
         body.set_block(editor_block.clone());
 
@@ -584,13 +585,9 @@ impl<'a> Widget for Editor<'a> {
         Self: Sized,
     {
         let info_style = match self.mode {
-            EditorMode::Insert => Style::default()
-                .add_modifier(Modifier::BOLD)
-                .fg(Color::Blue),
-            EditorMode::Normal => Style::default()
-                .add_modifier(Modifier::BOLD)
-                .fg(Color::Yellow),
-            EditorMode::Visual => Style::default().add_modifier(Modifier::BOLD).fg(Color::Red),
+            EditorMode::Insert => Style::default().bold().fg(Color::Blue),
+            EditorMode::Normal => Style::default().bold().fg(Color::Yellow),
+            EditorMode::Visual => Style::default().bold().fg(Color::Red),
         };
 
         let mode_span = Span::styled(self.block_info, info_style);
