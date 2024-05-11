@@ -2,7 +2,8 @@ use ratatui::{
     layout::Alignment,
     prelude::{Buffer, Rect},
     style::{Color, Style, Stylize},
-    widgets::{Block, BorderType, Borders, Paragraph, Widget, Wrap},
+    text::{Line, Span},
+    widgets::{Block, BorderType, Borders, Widget},
 };
 use tui_textarea::TextArea;
 
@@ -27,8 +28,11 @@ pub(crate) struct UserInput<'i> {
 
 impl<'i> UserInput<'i> {
     pub(crate) fn new(state: InputState, action: InputAction) -> Self {
+        let mut text = TextArea::default();
+        text.set_cursor_line_style(Style::default());
+
         Self {
-            text: TextArea::default(),
+            text,
             state,
             action,
         }
@@ -44,43 +48,33 @@ impl<'i> UserInput<'i> {
 }
 
 impl Widget for UserInput<'_> {
-    fn render(self, area: Rect, buf: &mut Buffer)
+    fn render(mut self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
     {
-        let (bg_clr, fg_clr, border_style) = match self.state {
-            InputState::Active => (
-                Color::Gray,
-                Color::DarkGray,
-                Style::default().bg(Color::Blue),
-            ),
-            InputState::Submit => (
-                Color::Red,
-                Color::Gray,
-                Style::default().bold().bg(Color::Green),
-            ),
-            InputState::Inactive => (
-                Color::DarkGray,
-                Color::Gray,
-                Style::default().bg(Color::LightBlue).dim(),
-            ),
+        let fg_clr = match self.state {
+            InputState::Active => Color::Green,
+            InputState::Submit => Color::Red,
+            InputState::Inactive => Color::Gray,
         };
 
-        let title = match self.action {
-            InputAction::SubmitNoteTitle => " Note title: ",
+        let (title, hint_text) = match self.action {
+            InputAction::SubmitNoteTitle => (" Note title: ", " <Enter> submit title "),
         };
+
+        let input_title = Span::styled(title, Style::default().bold().fg(fg_clr));
+        let input_hint = Span::styled(hint_text, Style::default().bold().fg(fg_clr));
 
         let input_block = Block::new()
-            .title(title)
+            .title(Line::from(vec![input_title]))
             .title_alignment(Alignment::Left)
+            .title_bottom(Line::from(vec![input_hint]))
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .border_style(border_style);
+            .border_type(BorderType::Rounded);
 
-        let mut input = TextArea::default();
-        input.set_block(input_block);
-        input.set_style(Style::default().fg(fg_clr).bg(bg_clr));
+        self.text.set_block(input_block);
+        self.text.set_style(Style::default().fg(fg_clr));
 
-        input.widget().render(area, buf);
+        self.text.widget().render(area, buf);
     }
 }
