@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use color_eyre::eyre::{Context, Result};
 use sqlx::{Pool, Sqlite};
-use tui_textarea::TextArea;
 
 use super::{
     buttons::{Button, ButtonAction, ButtonState},
