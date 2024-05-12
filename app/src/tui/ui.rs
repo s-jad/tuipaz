@@ -122,14 +122,13 @@ fn render_exit_screen(frame: &mut Frame) {
     let buf = frame.buffer_mut();
 
     let popup_block = Block::default()
-        .title("Y/N")
         .borders(Borders::ALL)
         .border_type(BorderType::Rounded)
         .padding(Padding::new(0, 0, 1, 1))
         .style(Style::default());
 
-    let exit_text = Text::styled(" Exit Tuipaz? (y/n)", Style::default().fg(Color::DarkGray));
-    // the `trim: false` will stop the text from being cut off when over the edge of the block
+    let exit_text = Text::styled(" Exit Tuipaz? (y/n) ", Style::default().fg(Color::DarkGray));
+
     Paragraph::new(exit_text)
         .block(popup_block)
         .alignment(Alignment::Center)
@@ -141,13 +140,9 @@ fn render_load_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
 
-    NoteList::new(vec![
-        "hey".to_owned(),
-        "we".to_owned(),
-        "are".to_owned(),
-        "notes".to_owned(),
-    ])
-    .render(centered_rect(60, 100, area), buf);
+    app.note_list
+        .clone()
+        .render(centered_rect(60, 100, area), buf);
 }
 
 fn render_new_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
