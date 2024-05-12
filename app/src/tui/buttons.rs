@@ -1,5 +1,4 @@
 use ratatui::{
-    layout::Alignment,
     prelude::{Buffer, Rect},
     style::{Color, Style, Stylize},
     widgets::{Block, BorderType, Borders, Padding, Paragraph, Widget, Wrap},
@@ -49,10 +48,10 @@ impl Widget for Button {
     where
         Self: Sized,
     {
-        let (bg_clr, border_style) = match self.state {
-            ButtonState::Active => (Color::Gray, Style::default().bold()),
-            ButtonState::Clicked => (Color::Red, Style::default().bold()),
-            ButtonState::Inactive => (Color::DarkGray, Style::default().dim()),
+        let (fg_clr, border_style) = match self.state {
+            ButtonState::Active => (Color::default(), Style::default().bold()),
+            ButtonState::Clicked => (Color::Yellow, Style::default().bold()),
+            ButtonState::Inactive => (Color::Blue, Style::default().dim()),
         };
 
         let btn_block = Block::new()
@@ -63,7 +62,7 @@ impl Widget for Button {
 
         let p = Paragraph::new(self.text)
             .centered()
-            .style(Style::default())
+            .style(Style::default().fg(fg_clr))
             .block(btn_block)
             .wrap(Wrap { trim: true });
 

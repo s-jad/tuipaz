@@ -1,8 +1,9 @@
 use ratatui::{
     layout::Alignment,
     style::{Color, Modifier, Style, Stylize},
+    symbols::border,
     text::{Line, Span},
-    widgets::{block::Title, Block, BorderType, Borders, Padding, Widget},
+    widgets::{block::Title, Block, Borders, Padding, Widget},
 };
 use tui_textarea::{CursorMove, Input, Key, TextArea};
 
@@ -45,8 +46,8 @@ pub(crate) enum EditorMode {
 }
 
 impl<'a> Editor<'a> {
-    pub(crate) fn new(title: String) -> Self {
-        let mut body = TextArea::default();
+    pub(crate) fn new(title: String, body: Vec<String>) -> Self {
+        let mut body = TextArea::new(body);
         body.set_cursor_line_style(Style::default());
         body.set_selection_style(Style::default().bg(Color::Red));
         body.set_max_histories(1000);
@@ -60,7 +61,16 @@ impl<'a> Editor<'a> {
             .title(Title::from(title.clone()).alignment(Alignment::Left))
             .title_style(Style::default().add_modifier(Modifier::BOLD))
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
+            .border_set(border::Set {
+                top_left: "╭",
+                top_right: "┬",
+                bottom_left: "╰",
+                bottom_right: "┴",
+                vertical_left: "│",
+                vertical_right: "│",
+                horizontal_top: "─",
+                horizontal_bottom: "─",
+            })
             .padding(Padding::new(1, 1, 1, 1))
             .title_bottom(Line::from(vec![mode_span, key_hint_span]));
 
@@ -200,6 +210,7 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 ) => {
                     self.body.move_cursor(CursorMove::Bottom);
+                    self.body.move_cursor(CursorMove::Head);
                 }
                 (
                     Input {
@@ -550,10 +561,11 @@ impl<'a> Editor<'a> {
                 let num_buf_len = self.num_buf.len() as u32;
                 if num_buf_len != 0 {
                     let num = self.get_num_from_buf(num_buf_len);
-                    self.body.move_cursor(CursorMove::Jump(num as u16, 0));
+                    self.body.move_cursor(CursorMove::Jump(num as u16 - 1, 0));
                     self.num_buf.clear();
                 } else {
                     self.body.move_cursor(CursorMove::Top);
+                    self.body.move_cursor(CursorMove::Head);
                 }
                 self.cmd_buf.clear();
             }
@@ -598,7 +610,16 @@ impl<'a> Widget for Editor<'a> {
             .title_style(Style::default().add_modifier(Modifier::BOLD))
             .title_bottom(Line::from(vec![mode_span, key_hint_span]))
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
+            .border_set(border::Set {
+                top_left: "╭",
+                top_right: "┬",
+                bottom_left: "╰",
+                bottom_right: "┴",
+                vertical_left: "│",
+                vertical_right: "│",
+                horizontal_top: "─",
+                horizontal_bottom: "─",
+            })
             .padding(Padding::new(1, 1, 1, 1));
 
         self.body.set_block(editor_block);

@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use color_eyre::eyre::{Context, Result};
 use sqlx::{Pool, Sqlite};
 
+use crate::db::db_mac::NoteTitle;
+
 use super::{
     buttons::{Button, ButtonAction, ButtonState},
     editor::Editor,
@@ -30,27 +32,42 @@ pub(crate) enum Screen {
     Exiting,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SidebarState {
+    Open(u16),
+    Hidden(u16),
+}
+
 #[derive(Debug)]
 pub(crate) struct App<'a> {
     pub(crate) state: AppState,
+    pub(crate) db: Pool<Sqlite>,
     pub(crate) current_screen: Screen,
     pub(crate) prev_screen: Screen,
     pub(crate) editor: Editor<'a>,
-    pub(crate) db: Pool<Sqlite>,
+    pub(crate) note_titles: Vec<String>,
     pub(crate) btns: HashMap<u8, Button>,
     pub(crate) btn_idx: u8,
     pub(crate) user_input: UserInput<'a>,
     pub(crate) user_msg: UserMessage,
+    pub(crate) sidebar: SidebarState,
+    pub(crate) sidebar_size: u16,
 }
 
 impl<'a> App<'a> {
-    pub fn new(db: Pool<Sqlite>) -> Self {
+    pub fn new(db: Pool<Sqlite>, note_titles: Vec<NoteTitle>) -> Self {
+        let note_titles = note_titles
+            .into_iter()
+            .map(|n| n.to_string())
+            .collect::<Vec<String>>();
+
         Self {
             state: AppState::default(),
+            db,
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
-            editor: Editor::new(" Untitled ".to_owned()),
-            db,
+            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()]),
+            note_titles,
             btns: HashMap::from([
                 (
                     0,
@@ -72,6 +89,8 @@ impl<'a> App<'a> {
             btn_idx: 0,
             user_input: UserInput::new(InputState::Active, InputAction::SubmitNoteTitle),
             user_msg: UserMessage::welcome(),
+            sidebar: SidebarState::Open(20),
+            sidebar_size: 20,
         }
     }
 }

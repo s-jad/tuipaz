@@ -2,12 +2,15 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Text},
-    widgets::{block::Title, Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
+    widgets::{
+        block::Title, Block, BorderType, Borders, Clear, List, Padding, Paragraph, Widget, Wrap,
+    },
     Frame,
 };
 
 use super::{
     app::{App, Screen},
+    note_list::NoteList,
     user_messages::centered_rect,
 };
 
@@ -79,7 +82,10 @@ fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
 
     let layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(&[Constraint::Percentage(80), Constraint::Percentage(20)])
+        .constraints(&[
+            Constraint::Percentage(100 - app.sidebar_size),
+            Constraint::Percentage(app.sidebar_size),
+        ])
         .split(area);
 
     app.editor.clone().render(layout[0], buf);
@@ -87,10 +93,16 @@ fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
     let files_block = Block::default()
         .title(Title::from(" File Explorer ").alignment(Alignment::Center))
         .title_style(Style::default().add_modifier(Modifier::BOLD))
-        .borders(Borders::ALL)
-        .border_type(BorderType::Thick);
+        .padding(Padding {
+            left: 1,
+            right: 1,
+            top: 0,
+            bottom: 0,
+        })
+        .borders(Borders::TOP | Borders::RIGHT | Borders::BOTTOM)
+        .border_type(BorderType::Rounded);
 
-    let files_text = vec![Line::from("This is the file explorer sidebar").style(Style::default())];
+    let files_text = vec![Line::from("File explorer sidebar").style(Style::default())];
 
     Paragraph::new(files_text)
         .block(files_block)
@@ -127,23 +139,15 @@ fn render_exit_screen(frame: &mut Frame) {
 
 fn render_load_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
     let area = frame.size();
-    frame.render_widget(Clear, area);
     let buf = frame.buffer_mut();
 
-    let load_note_block = Block::default()
-        .title(" Load Note ")
-        .borders(Borders::ALL)
-        .border_type(BorderType::Rounded)
-        .padding(Padding::new(1, 1, 1, 1))
-        .style(Style::default().bg(Color::DarkGray));
-
-    let exit_text = Text::styled("Exit Tuipaz? (y/n)", Style::default().fg(Color::Red))
-        .alignment(Alignment::Center);
-
-    Paragraph::new(exit_text)
-        .block(load_note_block)
-        .wrap(Wrap { trim: false })
-        .render(centered_rect(60, 25, area), buf);
+    NoteList::new(vec![
+        "hey".to_owned(),
+        "we".to_owned(),
+        "are".to_owned(),
+        "notes".to_owned(),
+    ])
+    .render(centered_rect(60, 100, area), buf);
 }
 
 fn render_new_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {

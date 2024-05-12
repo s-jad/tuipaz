@@ -52,17 +52,17 @@ impl Widget for UserInput<'_> {
     where
         Self: Sized,
     {
-        let fg_clr = match self.state {
-            InputState::Active => Color::Green,
-            InputState::Submit => Color::Red,
-            InputState::Inactive => Color::Gray,
+        let (title_clr, fg_clr) = match self.state {
+            InputState::Active => (Color::Yellow, Color::default()),
+            InputState::Submit => (Color::Yellow, Color::Red),
+            InputState::Inactive => (Color::Blue, Color::Blue),
         };
 
         let (title, hint_text) = match self.action {
             InputAction::SubmitNoteTitle => (" Note title: ", " <Enter> submit title "),
         };
 
-        let input_title = Span::styled(title, Style::default().bold().fg(fg_clr));
+        let input_title = Span::styled(title, Style::default().bold().fg(title_clr));
         let input_hint = Span::styled(hint_text, Style::default().bold().fg(fg_clr));
 
         let input_block = Block::new()

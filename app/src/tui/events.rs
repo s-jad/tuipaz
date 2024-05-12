@@ -5,8 +5,9 @@ use tui_textarea::{Input, Key};
 use crate::db::db_mac::DbMac;
 
 use super::{
-    app::{App, AppState, Screen},
+    app::{App, AppState, Screen, SidebarState},
     buttons::{ButtonAction, ButtonState},
+    editor::Editor,
     inputs::{InputAction, InputState, UserInput},
     user_messages::{MessageType, UserMessage},
 };
@@ -59,6 +60,20 @@ impl Events {
                 } => {
                     Self::save_note(app).await?;
                 }
+                Input {
+                    key: Key::Char('l'),
+                    alt: true,
+                    ..
+                } => {
+                    app.current_screen = Screen::LoadNote;
+                }
+                Input {
+                    key: Key::Char('f'),
+                    alt: true,
+                    ..
+                } => {
+                    Self::toggle_sidebar(app);
+                }
                 input => {
                     app.editor.handle_input(input);
                 }
@@ -83,6 +98,14 @@ impl Events {
             Screen::LoadNote => match input {
                 Input { key: Key::Esc, .. } => {
                     app.current_screen = Screen::Main;
+                }
+                Input { key: Key::Tab, .. } => {
+                    Self::switch_btns(app);
+                }
+                Input {
+                    key: Key::Enter, ..
+                } => {
+                    Self::load_note(app, "random_title".to_string()).await?;
                 }
                 _ => {}
             },
@@ -133,26 +156,36 @@ impl Events {
         return result;
     }
 
-    //async fn load_note(app: &mut App<'_>) -> Result<()> {
-    //    let result = DbMac::load_note(&app.db, note).await;
+    async fn load_note(app: &mut App<'_>, title: String) -> Result<()> {
+        let result = DbMac::load_note(&app.db, title).await;
 
-    //    match &result {
-    //        Ok(_) => {}
-    //        Err(err) => {
-    //            let new_msg = UserMessage::new(
-    //                format!("Error saving note!: {:?}", err),
-    //                true,
-    //                2,
-    //                MessageType::Error,
-    //            );
-    //            //app.user_msg = new_msg;
-    //            app.screen = Screen::Popup;
-    //        }
-    //    }
-    //    return result;
-    //}
-    fn init_note(app: &mut App<'_>) {
-        let note = app.editor.body.lines().join("\n");
+        match result {
+            Ok(note) => {
+                let body = match note.body {
+                    Some(text) => text
+                        .split("\n")
+                        .map(|line| line.to_owned())
+                        .collect::<Vec<String>>(),
+                    None => vec!["".to_owned()],
+                };
+
+                let title = match note.title {
+                    Some(t) => t,
+                    None => " Untitled ".to_owned(),
+                };
+
+                app.editor = Editor::new(title, body);
+                Ok(())
+            }
+            Err(err) => {
+                let new_msg =
+                    UserMessage::new(format!("Error saving note!: {:?}", err), MessageType::Error);
+                app.user_msg = new_msg;
+                app.prev_screen = app.current_screen;
+                app.current_screen = Screen::Popup;
+                Err(err.into())
+            }
+        }
     }
 
     fn switch_btns(app: &mut App) {
@@ -202,6 +235,17 @@ impl Events {
                 app.editor.set_title(formatted);
 
                 app.current_screen = Screen::Main;
+            }
+        }
+    }
+
+    fn toggle_sidebar(app: &mut App) {
+        match app.sidebar {
+            SidebarState::Open(_) => {
+                app.sidebar = SidebarState::Hidden(0);
+            }
+            SidebarState::Hidden(_) => {
+                app.sidebar = SidebarState::Open(app.sidebar_size);
             }
         }
     }
