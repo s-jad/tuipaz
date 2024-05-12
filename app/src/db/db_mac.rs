@@ -59,14 +59,17 @@ impl DbMac {
         }
     }
 
-    pub(crate) async fn load_note(db: &SqlitePool, title: String) -> Result<NotePatch> {
+    pub(crate) async fn load_note(db: &SqlitePool, title: &str) -> Result<Note> {
+        //panic!("title: {title:?}");
         let result = sqlx::query_as!(
-            NotePatch,
-            "SELECT title, body, links FROM notes WHERE title=? ",
+            Note,
+            "SELECT id, title, COALESCE(body, '') AS body, COALESCE(links, '') AS links FROM notes WHERE title=? ",
             title
         )
         .fetch_one(db)
         .await;
+
+        // panic!("load_note result: {result:?}");
 
         match result {
             Ok(note) => Ok(note),
