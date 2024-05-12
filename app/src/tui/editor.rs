@@ -2,7 +2,7 @@ use ratatui::{
     layout::Alignment,
     style::{Color, Modifier, Style, Stylize},
     symbols::border,
-    text::{Line, Span},
+    text::{Line, Span, Text},
     widgets::{block::Title, Block, Borders, Padding, Widget},
 };
 use tui_textarea::{CursorMove, Input, Key, TextArea};
@@ -58,7 +58,7 @@ impl<'a> Editor<'a> {
         let key_hint_span = Span::styled(" <Alt-q/s/l/n> Quit/Save/Load/New ", Style::default());
 
         let editor_block = Block::default()
-            .title(Title::from(title.clone()).alignment(Alignment::Left))
+            .title(Title::from(title.clone()))
             .title_style(Style::default().add_modifier(Modifier::BOLD))
             .borders(Borders::ALL)
             .border_set(border::Set {
