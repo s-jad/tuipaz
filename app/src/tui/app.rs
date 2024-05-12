@@ -10,6 +10,7 @@ use super::{
     editor::Editor,
     events::Events,
     inputs::{InputAction, InputState, UserInput},
+    note_list::NoteList,
     ui::ui,
     user_messages::UserMessage,
     utils::Tui,
@@ -45,7 +46,7 @@ pub(crate) struct App<'a> {
     pub(crate) current_screen: Screen,
     pub(crate) prev_screen: Screen,
     pub(crate) editor: Editor<'a>,
-    pub(crate) note_titles: Vec<String>,
+    pub(crate) note_list: NoteList<'a>,
     pub(crate) btns: HashMap<u8, Button>,
     pub(crate) btn_idx: u8,
     pub(crate) user_input: UserInput<'a>,
@@ -56,10 +57,12 @@ pub(crate) struct App<'a> {
 
 impl<'a> App<'a> {
     pub fn new(db: Pool<Sqlite>, note_titles: Vec<NoteTitle>) -> Self {
-        let note_titles = note_titles
-            .into_iter()
-            .map(|n| n.to_string())
-            .collect::<Vec<String>>();
+        let note_list = NoteList::new(
+            note_titles
+                .into_iter()
+                .map(|n| n.to_string())
+                .collect::<Vec<String>>(),
+        );
 
         Self {
             state: AppState::default(),
@@ -67,7 +70,7 @@ impl<'a> App<'a> {
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
             editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()]),
-            note_titles,
+            note_list,
             btns: HashMap::from([
                 (
                     0,
