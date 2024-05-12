@@ -9,6 +9,7 @@ use super::{
     buttons::{ButtonAction, ButtonState},
     editor::Editor,
     inputs::{InputAction, InputState, UserInput},
+    note_list::NoteList,
     user_messages::{MessageType, UserMessage},
 };
 
@@ -99,13 +100,34 @@ impl Events {
                 Input { key: Key::Esc, .. } => {
                     app.current_screen = Screen::Main;
                 }
-                Input { key: Key::Tab, .. } => {
-                    Self::switch_btns(app);
+                Input {
+                    key: Key::Tab,
+                    shift: false,
+                    ..
+                }
+                | Input { key: Key::Down, .. }
+                | Input {
+                    key: Key::Char('j'),
+                    ..
+                } => {
+                    app.note_list.next();
+                }
+                Input {
+                    key: Key::Tab,
+                    shift: true,
+                    ..
+                }
+                | Input { key: Key::Up, .. }
+                | Input {
+                    key: Key::Char('k'),
+                    ..
+                } => {
+                    app.note_list.prev();
                 }
                 Input {
                     key: Key::Enter, ..
                 } => {
-                    Self::load_note(app, "random_title".to_string()).await?;
+                    Self::load_note(app).await?;
                 }
                 _ => {}
             },
@@ -156,7 +178,10 @@ impl Events {
         return result;
     }
 
-    async fn load_note(app: &mut App<'_>, title: String) -> Result<()> {
+    async fn load_note(app: &mut App<'_>) -> Result<()> {
+        let note_idx = app.note_list.selected;
+        let title = app.note_list.note_vec[note_idx].as_str();
+
         let result = DbMac::load_note(&app.db, title).await;
 
         match result {
@@ -169,17 +194,15 @@ impl Events {
                     None => vec!["".to_owned()],
                 };
 
-                let title = match note.title {
-                    Some(t) => t,
-                    None => " Untitled ".to_owned(),
-                };
-
-                app.editor = Editor::new(title, body);
+                app.editor = Editor::new(note.title, body);
+                app.current_screen = Screen::Main;
                 Ok(())
             }
             Err(err) => {
-                let new_msg =
-                    UserMessage::new(format!("Error saving note!: {:?}", err), MessageType::Error);
+                let new_msg = UserMessage::new(
+                    format!("Error loading note!: {:?}", err),
+                    MessageType::Error,
+                );
                 app.user_msg = new_msg;
                 app.prev_screen = app.current_screen;
                 app.current_screen = Screen::Popup;
@@ -230,9 +253,8 @@ impl Events {
 
         match app.user_input.get_action() {
             InputAction::SubmitNoteTitle => {
-                let title = app.user_input.text.lines();
-                let formatted = format!(" {} ", &title[0]);
-                app.editor.set_title(formatted);
+                let title = app.user_input.text.lines()[0].clone();
+                app.editor.set_title(title);
 
                 app.current_screen = Screen::Main;
             }
