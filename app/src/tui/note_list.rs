@@ -6,17 +6,19 @@ use ratatui::{
     },
 };
 
+use crate::db::db_mac::NoteIdentifier;
+
 #[derive(Debug, Clone)]
 pub(crate) struct NoteList<'l> {
     pub(crate) selected: usize,
-    pub(crate) note_vec: Vec<String>,
+    pub(crate) note_vec: Vec<NoteIdentifier>,
     pub(crate) notes: List<'l>,
 }
 
 impl<'l> NoteList<'l> {
-    pub(crate) fn new(notes: Vec<String>) -> Self {
+    pub(crate) fn new(note_identifiers: Vec<NoteIdentifier>) -> Self {
         let selected = 0;
-        let note_vec = notes.clone();
+        let note_vec = note_identifiers.clone();
         let list_info = Line::styled(
             " <Enter> Load Note | <Tab/ArrowUp> Next | <Shift-Tab/ArrowDown> Prev ",
             Style::default().fg(Color::Red),
@@ -30,11 +32,15 @@ impl<'l> NoteList<'l> {
             .padding(Padding::new(1, 1, 1, 1))
             .style(Style::default());
 
-        let notes = List::from_iter(notes.into_iter().map(|n| ListItem::new(Line::from(n))))
-            .block(load_note_block)
-            .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-            .highlight_symbol(">>")
-            .repeat_highlight_symbol(true);
+        let notes = List::from_iter(
+            note_identifiers
+                .into_iter()
+                .map(|nid| ListItem::new(Line::from(nid.title))),
+        )
+        .block(load_note_block)
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD))
+        .highlight_symbol(">>")
+        .repeat_highlight_symbol(true);
 
         Self {
             selected,
@@ -83,7 +89,7 @@ impl<'l> Widget for NoteList<'l> {
         let list = List::from_iter(
             self.note_vec
                 .into_iter()
-                .map(|n| ListItem::new(Line::from(n))),
+                .map(|nid| ListItem::new(Line::from(nid.title))),
         )
         .block(load_note_block)
         .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
