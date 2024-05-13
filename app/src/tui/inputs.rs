@@ -16,7 +16,8 @@ pub(crate) enum InputState {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum InputAction {
-    SubmitNoteTitle,
+    NewNoteTitle,
+    NewNote,
 }
 
 #[derive(Debug, Clone)]
@@ -59,7 +60,10 @@ impl Widget for UserInput<'_> {
         };
 
         let (title, hint_text) = match self.action {
-            InputAction::SubmitNoteTitle => (" Note title: ", " <Enter> submit title "),
+            InputAction::NewNoteTitle | InputAction::NewNote => (
+                " Note title: ",
+                " <Esc> return to prev screen <Enter> submit title ",
+            ),
         };
 
         let input_title = Span::styled(title, Style::default().bold().fg(title_clr));
