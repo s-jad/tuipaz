@@ -73,6 +73,15 @@ impl Events {
                     ..
                 } => {
                     app.current_screen = Screen::NewNote;
+                    app.user_input = UserInput::new(InputState::Active, InputAction::NewNote);
+                }
+                Input {
+                    key: Key::Char('t'),
+                    alt: true,
+                    ..
+                } => {
+                    app.current_screen = Screen::NewNote;
+                    app.user_input = UserInput::new(InputState::Active, InputAction::NewNoteTitle);
                 }
                 Input {
                     key: Key::Char('f'),
@@ -92,6 +101,9 @@ impl Events {
                     ..
                 } => {
                     Self::show_exit_screen(app);
+                }
+                Input { key: Key::Esc, .. } => {
+                    app.current_screen = Screen::Main;
                 }
                 Input {
                     key: Key::Enter, ..
@@ -253,7 +265,7 @@ impl Events {
                 app.current_screen = Screen::Main;
             }
             ButtonAction::RenderNewNoteScreen => {
-                app.user_input = UserInput::new(InputState::Active, InputAction::SubmitNoteTitle);
+                app.user_input = UserInput::new(InputState::Active, InputAction::NewNote);
                 app.current_screen = Screen::NewNote;
             }
             ButtonAction::RenderLoadNoteScreen => {
@@ -266,9 +278,17 @@ impl Events {
         app.user_input.set_state(InputState::Submit);
 
         match app.user_input.get_action() {
-            InputAction::SubmitNoteTitle => {
+            InputAction::NewNoteTitle => {
                 let title = app.user_input.text.lines()[0].clone();
                 app.editor.set_title(title);
+
+                app.current_screen = Screen::Main;
+            }
+            InputAction::NewNote => {
+                let title = app.user_input.text.lines()[0].clone();
+                let body = vec!["".to_string()];
+                let note_id = None;
+                app.editor = Editor::new(title, body, note_id);
 
                 app.current_screen = Screen::Main;
             }
