@@ -2,7 +2,7 @@ use ratatui::{
     layout::Alignment,
     style::{Color, Modifier, Style, Stylize},
     symbols::border,
-    text::{Line, Span, Text},
+    text::{Line, Span},
     widgets::{block::Title, Block, Borders, Padding, Widget},
 };
 use tui_textarea::{CursorMove, Input, Key, TextArea};
@@ -56,7 +56,10 @@ impl<'a> Editor<'a> {
         let block_info = " <| NORMAL |> ".to_string();
         let info_style = Style::default().bold().fg(Color::Yellow);
         let mode_span = Span::styled(block_info.clone(), info_style);
-        let key_hint_span = Span::styled(" <Alt-q/s/l/n> Quit/Save/Load/New ", Style::default());
+        let key_hint_span = Span::styled(
+            " <Alt-q/s/l/n> Quit/Save/Load/New <Alt-t> Edit title ",
+            Style::default(),
+        );
 
         let editor_block = Block::default()
             .title(Title::from(title.clone()))
@@ -127,7 +130,15 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Left, .. }, CommandState::NoCommand) => {
-                    self.body.move_cursor(CursorMove::Back)
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::Back);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::Back);
+                        }),
+                    }
                 }
                 // Move Down
                 (
@@ -138,7 +149,15 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Down, .. }, CommandState::NoCommand) => {
-                    self.body.move_cursor(CursorMove::Down);
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::Down);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::Down);
+                        }),
+                    }
                 }
                 // Move Up
                 (
@@ -149,7 +168,15 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Up, .. }, CommandState::NoCommand) => {
-                    self.body.move_cursor(CursorMove::Up);
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::Up);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::Up);
+                        }),
+                    }
                 }
                 // Move Right
                 (
@@ -165,7 +192,15 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    self.body.move_cursor(CursorMove::Forward);
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::Forward);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::Forward);
+                        }),
+                    }
                 }
                 (
                     Input {
@@ -174,7 +209,15 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    self.body.move_cursor(CursorMove::WordForward);
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::WordForward);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::WordForward);
+                        }),
+                    }
                 }
                 (
                     Input {
@@ -184,7 +227,15 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    self.body.move_cursor(CursorMove::WordBack);
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::WordBack);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::WordBack);
+                        }),
+                    }
                 }
                 (
                     Input {
@@ -269,7 +320,15 @@ impl<'a> Editor<'a> {
                     },
                     _,
                 ) => {
-                    self.body.delete_next_char();
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.delete_next_char();
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.delete_next_char();
+                        }),
+                    }
                 }
                 (
                     Input {
@@ -404,92 +463,96 @@ impl<'a> Editor<'a> {
     fn execute_delete(&mut self, modifier: char) {
         match modifier {
             'd' | 'j' => {
+                let actions = move |editor: &mut Editor<'a>| {
+                    editor.body.move_cursor(CursorMove::Head);
+                    editor.body.delete_line_by_end();
+                    editor.body.delete_newline();
+                    editor.body.move_cursor(CursorMove::Down);
+                };
+
                 let num_buf_len = self.num_buf.len() as u32;
-                if num_buf_len != 0 {
-                    let num = self.get_num_from_buf(num_buf_len);
-                    for _ in 0..num {
-                        self.body.move_cursor(CursorMove::Head);
-                        self.body.delete_line_by_end();
-                        self.body.delete_newline();
-                        self.body.move_cursor(CursorMove::Down);
+                match num_buf_len {
+                    0 => {
+                        actions(self);
                     }
-                    self.num_buf.clear();
-                } else {
-                    self.body.move_cursor(CursorMove::Head);
-                    self.body.delete_line_by_end();
-                    self.body.delete_newline();
-                    self.body.move_cursor(CursorMove::Down);
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
                 }
+
                 self.cmd_buf.clear();
             }
             'k' => {
+                let actions = move |editor: &mut Editor<'a>| {
+                    editor.body.move_cursor(CursorMove::Head);
+                    editor.body.delete_line_by_end();
+                    editor.body.delete_newline();
+                };
+
                 let num_buf_len = self.num_buf.len() as u32;
-                if num_buf_len != 0 {
-                    let num = self.get_num_from_buf(num_buf_len);
-                    for _ in 0..num {
-                        self.body.move_cursor(CursorMove::Head);
-                        self.body.delete_line_by_end();
-                        self.body.delete_newline();
+                match num_buf_len {
+                    0 => {
+                        actions(self);
                     }
-                    self.num_buf.clear();
-                } else {
-                    self.body.move_cursor(CursorMove::Head);
-                    self.body.delete_line_by_end();
-                    self.body.delete_newline();
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
                 }
                 self.cmd_buf.clear();
             }
             'h' => {
+                let actions = move |editor: &mut Editor<'a>| editor.body.delete_char();
                 let num_buf_len = self.num_buf.len() as u32;
-                if num_buf_len != 0 {
-                    let num = self.get_num_from_buf(num_buf_len);
-                    for _ in 0..num {
-                        self.body.delete_char();
+                match num_buf_len {
+                    0 => {
+                        actions(self);
                     }
-                    self.num_buf.clear();
-                } else {
-                    self.body.delete_char();
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
                 }
+
                 self.cmd_buf.clear();
             }
             'l' => {
+                let actions = move |editor: &mut Editor<'a>| editor.body.delete_next_char();
                 let num_buf_len = self.num_buf.len() as u32;
-                if num_buf_len != 0 {
-                    let num = self.get_num_from_buf(num_buf_len);
-                    for _ in 0..num {
-                        self.body.delete_next_char();
+                match num_buf_len {
+                    0 => {
+                        actions(self);
                     }
-                    self.num_buf.clear();
-                } else {
-                    self.body.delete_next_char();
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
                 }
                 self.cmd_buf.clear();
             }
             'w' => {
+                let actions = move |editor: &mut Editor<'a>| editor.body.delete_next_word();
                 let num_buf_len = self.num_buf.len() as u32;
-                if num_buf_len != 0 {
-                    let num = self.get_num_from_buf(num_buf_len);
-                    for _ in 0..num {
-                        self.body.delete_next_word();
+                match num_buf_len {
+                    0 => {
+                        actions(self);
                     }
-                    self.num_buf.clear();
-                } else {
-                    self.body.delete_next_word();
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
                 }
                 self.cmd_buf.clear();
             }
             'b' => {
+                let actions = move |editor: &mut Editor<'a>| {
+                    editor.body.move_cursor(CursorMove::WordBack);
+                    editor.body.delete_word();
+                };
                 let num_buf_len = self.num_buf.len() as u32;
-                if num_buf_len != 0 {
-                    let num = self.get_num_from_buf(num_buf_len);
-                    for _ in 0..num {
-                        self.body.move_cursor(CursorMove::WordBack);
-                        self.body.delete_word();
+                match num_buf_len {
+                    0 => {
+                        actions(self);
                     }
-                    self.num_buf.clear();
-                } else {
-                    self.body.move_cursor(CursorMove::WordBack);
-                    self.body.delete_word();
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
                 }
                 self.cmd_buf.clear();
             }
@@ -579,6 +642,19 @@ impl<'a> Editor<'a> {
         self.cmd_state = CommandState::NoCommand;
     }
 
+    fn repeat_action<F>(&mut self, num_buf_len: u32, mut action: F)
+    where
+        F: FnMut(&mut Self) + 'static,
+    {
+        let repetitions = self.get_num_from_buf(num_buf_len);
+
+        for _ in 0..repetitions {
+            action(self);
+        }
+
+        self.num_buf.clear();
+    }
+
     fn get_num_from_buf(&self, num_buf_len: u32) -> u16 {
         self.num_buf
             .iter()
@@ -605,7 +681,10 @@ impl<'a> Widget for Editor<'a> {
         };
 
         let mode_span = Span::styled(self.block_info, info_style);
-        let key_hint_span = Span::styled(" <Alt-q/s/l/n> Quit/Save/Load/New ", Style::default());
+        let key_hint_span = Span::styled(
+            " <Alt-q/s/l/n> Quit/Save/Load/New  <Alt-t> Edit title ",
+            Style::default(),
+        );
 
         let editor_block = Block::default()
             .title(Title::from(self.title).alignment(Alignment::Left))
