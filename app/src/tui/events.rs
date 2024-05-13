@@ -9,7 +9,6 @@ use super::{
     buttons::{ButtonAction, ButtonState},
     editor::Editor,
     inputs::{InputAction, InputState, UserInput},
-    note_list::NoteList,
     user_messages::{MessageType, UserMessage},
 };
 
@@ -67,6 +66,13 @@ impl Events {
                     ..
                 } => {
                     app.current_screen = Screen::LoadNote;
+                }
+                Input {
+                    key: Key::Char('n'),
+                    alt: true,
+                    ..
+                } => {
+                    app.current_screen = Screen::NewNote;
                 }
                 Input {
                     key: Key::Char('f'),
@@ -157,8 +163,16 @@ impl Events {
     }
 
     async fn save_note(app: &mut App<'_>) -> Result<()> {
-        let note = app.editor.body.lines().join("\n");
-        let result = DbMac::save_note(&app.db, note, app.editor.title.clone()).await;
+        let result = match app.editor.note_id {
+            Some(id) => {
+                let body = app.editor.body.lines().join("\n");
+                DbMac::update_note(&app.db, app.editor.title.clone(), body, id).await
+            }
+            None => {
+                let body = app.editor.body.lines().join("\n");
+                DbMac::save_note(&app.db, body, app.editor.title.clone()).await
+            }
+        };
 
         match &result {
             Ok(_) => {
@@ -180,9 +194,9 @@ impl Events {
 
     async fn load_note(app: &mut App<'_>) -> Result<()> {
         let note_idx = app.note_list.selected;
-        let title = app.note_list.note_vec[note_idx].as_str();
+        let id = app.note_list.note_vec[note_idx].id;
 
-        let result = DbMac::load_note(&app.db, title).await;
+        let result = DbMac::load_note(&app.db, id).await;
 
         match result {
             Ok(note) => {
@@ -194,7 +208,7 @@ impl Events {
                     None => vec!["".to_owned()],
                 };
 
-                app.editor = Editor::new(note.title, body);
+                app.editor = Editor::new(note.title, body, Some(note.id));
                 app.current_screen = Screen::Main;
                 Ok(())
             }
