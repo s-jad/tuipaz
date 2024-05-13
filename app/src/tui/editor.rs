@@ -14,6 +14,7 @@ const GOTO_COMMANDS: [char; 1] = ['g'];
 #[derive(Debug, Clone)]
 pub(crate) struct Editor<'a> {
     pub(crate) title: String,
+    pub(crate) note_id: Option<i64>,
     pub(crate) body: TextArea<'a>,
     pub(crate) mode: EditorMode,
     pub(crate) block_info: String,
@@ -46,7 +47,7 @@ pub(crate) enum EditorMode {
 }
 
 impl<'a> Editor<'a> {
-    pub(crate) fn new(title: String, body: Vec<String>) -> Self {
+    pub(crate) fn new(title: String, body: Vec<String>, note_id: Option<i64>) -> Self {
         let mut body = TextArea::new(body);
         body.set_cursor_line_style(Style::default());
         body.set_selection_style(Style::default().bg(Color::Red));
@@ -78,6 +79,7 @@ impl<'a> Editor<'a> {
 
         Self {
             title,
+            note_id,
             body,
             mode: EditorMode::Normal,
             block_info,
