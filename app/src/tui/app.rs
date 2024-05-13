@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use color_eyre::eyre::{Context, Result};
 use sqlx::{Pool, Sqlite};
 
-use crate::db::db_mac::NoteTitle;
+use crate::db::db_mac::NoteIdentifier;
 
 use super::{
     buttons::{Button, ButtonAction, ButtonState},
@@ -56,12 +56,11 @@ pub(crate) struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    pub fn new(db: Pool<Sqlite>, note_titles: Vec<NoteTitle>) -> Self {
+    pub fn new(db: Pool<Sqlite>, note_identifiers: Vec<NoteIdentifier>) -> Self {
         let note_list = NoteList::new(
-            note_titles
+            note_identifiers
                 .into_iter()
-                .map(|n| n.to_string())
-                .collect::<Vec<String>>(),
+                .collect::<Vec<NoteIdentifier>>(),
         );
 
         Self {
@@ -69,7 +68,7 @@ impl<'a> App<'a> {
             db,
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
-            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()]),
+            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], None),
             note_list,
             btns: HashMap::from([
                 (
