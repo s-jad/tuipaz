@@ -7,7 +7,7 @@ use crate::db::db_mac::DbMac;
 use super::{
     app::{App, AppState, Screen, SidebarState},
     buttons::{ButtonAction, ButtonState},
-    editor::Editor,
+    editor::{Editor, Link},
     inputs::{InputAction, InputState, UserInput},
     user_messages::{MessageType, UserMessage},
 };
@@ -175,14 +175,20 @@ impl Events {
     }
 
     async fn save_note(app: &mut App<'_>) -> Result<()> {
+        let has_links = match app.editor.links.len() {
+            0 => false,
+            _ => true,
+        };
+
         let result = match app.editor.note_id {
             Some(id) => {
                 let body = app.editor.body.lines().join("\n");
-                DbMac::update_note(&app.db, app.editor.title.clone(), body, id).await
+
+                DbMac::update_note(&app.db, app.editor.title.clone(), body, has_links, id).await
             }
             None => {
                 let body = app.editor.body.lines().join("\n");
-                DbMac::save_note(&app.db, body, app.editor.title.clone()).await
+                DbMac::save_note(&app.db, body, app.editor.title.clone(), has_links).await
             }
         };
 
@@ -220,7 +226,20 @@ impl Events {
                     None => vec!["".to_owned()],
                 };
 
-                app.editor = Editor::new(note.title, body, Some(note.id));
+                let db_links = match note.has_links {
+                    true => DbMac::load_note_links(&app.db, id).await?,
+                    false => vec![],
+                };
+
+                let links = match db_links.len() {
+                    0 => vec![],
+                    _ => db_links
+                        .into_iter()
+                        .map(|dbl| Link::from_db_link(dbl))
+                        .collect::<Vec<Link>>(),
+                };
+
+                app.editor = Editor::new(note.title, body, links, Some(note.id));
                 app.current_screen = Screen::Main;
                 Ok(())
             }
@@ -288,7 +307,7 @@ impl Events {
                 let title = app.user_input.text.lines()[0].clone();
                 let body = vec!["".to_string()];
                 let note_id = None;
-                app.editor = Editor::new(title, body, note_id);
+                app.editor = Editor::new(title, body, vec![], note_id);
 
                 app.current_screen = Screen::Main;
             }
