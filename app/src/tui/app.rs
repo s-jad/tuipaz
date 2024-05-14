@@ -68,7 +68,7 @@ impl<'a> App<'a> {
             db,
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
-            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], None),
+            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], vec![], None),
             note_list,
             btns: HashMap::from([
                 (
