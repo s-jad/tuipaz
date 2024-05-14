@@ -7,6 +7,8 @@ use ratatui::{
 };
 use tui_textarea::{CursorMove, Input, Key, TextArea};
 
+use crate::db::db_mac::DbNoteLink;
+
 const DELETE_COMMANDS: [char; 7] = ['d', 'w', 'b', 'j', 'k', 'l', 'h'];
 const YANK_COMMANDS: [char; 6] = ['w', 'b', 'j', 'k', 'l', 'h'];
 const GOTO_COMMANDS: [char; 1] = ['g'];
@@ -16,6 +18,8 @@ pub(crate) struct Editor<'a> {
     pub(crate) title: String,
     pub(crate) note_id: Option<i64>,
     pub(crate) body: TextArea<'a>,
+    pub(crate) links: Vec<Link>,
+    pub(crate) pending_link_pos: (Option<Pos>, Option<Pos>),
     pub(crate) mode: EditorMode,
     pub(crate) block_info: String,
     pub(crate) prev_cursor: CursorPosition,
@@ -25,14 +29,47 @@ pub(crate) struct Editor<'a> {
 }
 
 #[derive(Debug, Clone)]
-enum CursorPosition {
+struct Pos {
+    row: usize,
+    col: usize,
+}
+
+impl Pos {
+    fn new(row: usize, col: usize) -> Self {
+        Self { row, col }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Link {
+    start: Pos,
+    end: Pos,
+    linked_note: i64,
+}
+
+impl Link {
+    pub(crate) fn from_db_link(db_link: DbNoteLink) -> Self {
+        let start = Pos::new(db_link.start_x as usize, db_link.start_y as usize);
+        let end = Pos::new(db_link.end_x as usize, db_link.end_y as usize);
+        let linked_note = db_link.linked_note_id;
+
+        Self {
+            start,
+            end,
+            linked_note,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum CursorPosition {
     Head,
     Middle(usize),
     End,
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-enum CommandState {
+pub(crate) enum CommandState {
     NoCommand,
     Delete,
     Yank,
@@ -47,7 +84,12 @@ pub(crate) enum EditorMode {
 }
 
 impl<'a> Editor<'a> {
-    pub(crate) fn new(title: String, body: Vec<String>, note_id: Option<i64>) -> Self {
+    pub(crate) fn new(
+        title: String,
+        body: Vec<String>,
+        links: Vec<Link>,
+        note_id: Option<i64>,
+    ) -> Self {
         let mut body = TextArea::new(body);
         body.set_cursor_line_style(Style::default());
         body.set_selection_style(Style::default().bg(Color::Red));
@@ -84,6 +126,8 @@ impl<'a> Editor<'a> {
             title,
             note_id,
             body,
+            links,
+            pending_link_pos: (None, None),
             mode: EditorMode::Normal,
             block_info,
             prev_cursor: CursorPosition::Head,
@@ -120,6 +164,18 @@ impl<'a> Editor<'a> {
             EditorMode::Insert => match input {
                 Input { key: Key::Esc, .. } => {
                     self.set_mode(EditorMode::Normal);
+                }
+                Input {
+                    key: Key::Char('['),
+                    ..
+                } => {
+                    self.start_link();
+                }
+                Input {
+                    key: Key::Char(']'),
+                    ..
+                } => {
+                    self.end_link();
                 }
                 input => {
                     self.body.input(input);
@@ -866,6 +922,16 @@ impl<'a> Editor<'a> {
                 );
                 acc
             }) as u16
+    }
+
+    fn start_link(&mut self) {
+        let cursor_pos = self.body.cursor();
+        self.pending_link_pos.0 = Some(Pos::new(cursor_pos.0, cursor_pos.1));
+    }
+
+    fn end_link(&mut self) {
+        let cursor_pos = self.body.cursor();
+        self.pending_link_pos.0 = Some(Pos::new(cursor_pos.0, cursor_pos.1));
     }
 }
 
