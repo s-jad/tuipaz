@@ -5,7 +5,7 @@ use ratatui::{
     prelude::{Buffer, Rect},
     style::{Style, Stylize},
     text::Line,
-    widgets::{block::Title, Block, BorderType, Borders, Paragraph, Widget, Wrap},
+    widgets::{block::Title, Block, BorderType, Borders, Padding, Paragraph, Widget, Wrap},
 };
 
 #[derive(Debug, Clone)]
@@ -46,19 +46,57 @@ impl Widget for UserMessage {
         };
 
         let bottom_title = " <Esc> Return to previous screen ".to_string();
+        let bt_width = (bottom_title.len() + 2) as u16;
+
         let popup_block = Block::default()
             .title(Title::from(title).alignment(Alignment::Center))
             .borders(Borders::ALL)
             .title_bottom(Line::from(bottom_title))
+            .padding(Padding::vertical(1))
             .border_type(BorderType::Rounded);
 
-        let popup_text = vec![Line::from(self.msg).style(style)];
+        let msg_width = self
+            .msg
+            .lines()
+            .fold(0usize, |acc, l| std::cmp::max(l.len(), acc)) as u16;
+
+        let width = std::cmp::max(msg_width, bt_width);
+
+        let popup_text = self
+            .msg
+            .lines()
+            .map(|l| Line::from(l).style(style).alignment(Alignment::Center))
+            .collect::<Vec<Line>>();
+
+        let msg_height = (popup_text.len() as f32 * 1.2).ceil() as u16 + 4;
 
         Paragraph::new(popup_text)
             .block(popup_block)
             .wrap(Wrap { trim: true })
-            .render(centered_rect(40, 40, area), buf);
+            .render(centered_msg(width, msg_height, area), buf);
     }
+}
+
+fn centered_msg(msg_x: u16, msg_y: u16, r: Rect) -> Rect {
+    // Cut the given rectangle into three vertical pieces
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min((r.height - msg_y) / 2),
+            Constraint::Min(msg_y),
+            Constraint::Min((r.height - msg_y) / 2),
+        ])
+        .split(r);
+
+    // Then cut the middle vertical piece into three width-wise pieces
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Min((r.width - msg_x) / 2),
+            Constraint::Min(msg_x),
+            Constraint::Min((r.width - msg_x) / 2),
+        ])
+        .split(popup_layout[1])[1] // Return the middle chunk
 }
 
 /// helper function to create a centered rect using up certain percentage of the available rect `r`
