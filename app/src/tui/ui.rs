@@ -2,15 +2,12 @@ use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Modifier, Style},
     text::{Line, Text},
-    widgets::{
-        block::Title, Block, BorderType, Borders, Clear, List, Padding, Paragraph, Widget, Wrap,
-    },
+    widgets::{block::Title, Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
     Frame,
 };
 
 use super::{
     app::{App, Screen},
-    note_list::NoteList,
     user_messages::centered_rect,
 };
 
@@ -133,7 +130,7 @@ fn render_exit_screen(frame: &mut Frame) {
         .block(popup_block)
         .alignment(Alignment::Center)
         .wrap(Wrap { trim: false })
-        .render(centered_rect(30, 15, area), buf);
+        .render(centered_rect(25, 15, area), buf);
 }
 
 fn render_load_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
