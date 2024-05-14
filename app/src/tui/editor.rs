@@ -95,9 +95,18 @@ impl<'a> Editor<'a> {
 
     pub(crate) fn set_mode(&mut self, mode: EditorMode) {
         self.block_info = match mode {
-            EditorMode::Insert => " <| INSERT |> ".to_owned(),
-            EditorMode::Normal => " <| NORMAL |> ".to_owned(),
-            EditorMode::Visual => " <| VISUAL |> ".to_owned(),
+            EditorMode::Insert => {
+                self.body.cancel_selection();
+                " <| INSERT |> ".to_owned()
+            }
+            EditorMode::Normal => {
+                self.body.cancel_selection();
+                " <| NORMAL |> ".to_owned()
+            }
+            EditorMode::Visual => {
+                self.body.start_selection();
+                " <| VISUAL |> ".to_owned()
+            }
         };
         self.mode = mode;
     }
@@ -406,7 +415,6 @@ impl<'a> Editor<'a> {
                     },
                     _,
                 ) => {
-                    self.body.start_selection();
                     self.set_mode(EditorMode::Visual);
                 }
                 (
@@ -418,16 +426,14 @@ impl<'a> Editor<'a> {
                     _,
                 ) => {
                     self.body.move_cursor(CursorMove::Head);
-                    self.body.start_selection();
-                    self.body.move_cursor(CursorMove::End);
                     self.set_mode(EditorMode::Visual);
+                    self.body.move_cursor(CursorMove::End);
                 }
                 (input, CommandState::NoCommand) => self.prime_command_state(input),
             },
             EditorMode::Visual => match (input, &self.cmd_state) {
                 (Input { key: Key::Esc, .. }, _) => {
                     self.set_mode(EditorMode::Normal);
-                    self.body.cancel_selection();
                 }
                 // Handle multi-key commands
                 (input, CommandState::GoTo | CommandState::Delete | CommandState::Yank) => {
@@ -593,7 +599,8 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    self.body.yank_text();
+                    self.body.cut();
+                    self.set_mode(EditorMode::Normal);
                 }
                 _ => {}
             },
