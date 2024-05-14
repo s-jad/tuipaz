@@ -332,6 +332,32 @@ impl<'a> Editor<'a> {
                 }
                 (
                     Input {
+                        key: Key::Char('O'),
+                        shift: true,
+                        ..
+                    },
+                    _,
+                ) => {
+                    self.body.move_cursor(CursorMove::Up);
+                    self.body.move_cursor(CursorMove::End);
+                    self.body.insert_newline();
+                    self.set_mode(EditorMode::Insert);
+                }
+                (
+                    Input {
+                        key: Key::Char('o'),
+                        shift: false,
+                        ..
+                    },
+                    _,
+                ) => {
+                    self.body.move_cursor(CursorMove::End);
+                    self.body.insert_newline();
+                    self.set_mode(EditorMode::Insert);
+                }
+                // Switch modes
+                (
+                    Input {
                         key: Key::Char('a'),
                         ctrl: false,
                         ..
@@ -398,9 +424,176 @@ impl<'a> Editor<'a> {
                 }
                 (input, CommandState::NoCommand) => self.prime_command_state(input),
             },
-            EditorMode::Visual => match input {
-                Input { key: Key::Esc, .. } => {
+            EditorMode::Visual => match (input, &self.cmd_state) {
+                (Input { key: Key::Esc, .. }, _) => {
                     self.set_mode(EditorMode::Normal);
+                    self.body.cancel_selection();
+                }
+                // Handle multi-key commands
+                (input, CommandState::GoTo | CommandState::Delete | CommandState::Yank) => {
+                    self.process_command_key_inputs(input)
+                }
+                // Move left
+                (
+                    Input {
+                        key: Key::Char('h'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                )
+                | (Input { key: Key::Left, .. }, CommandState::NoCommand) => {
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::Back);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::Back);
+                        }),
+                    }
+                }
+                // Move Down
+                (
+                    Input {
+                        key: Key::Char('j'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                )
+                | (Input { key: Key::Down, .. }, CommandState::NoCommand) => {
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::Down);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::Down);
+                        }),
+                    }
+                }
+                // Move Up
+                (
+                    Input {
+                        key: Key::Char('k'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                )
+                | (Input { key: Key::Up, .. }, CommandState::NoCommand) => {
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::Up);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::Up);
+                        }),
+                    }
+                }
+                // Move Right
+                (
+                    Input {
+                        key: Key::Char('l'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                )
+                | (
+                    Input {
+                        key: Key::Right, ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::Forward);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::Forward);
+                        }),
+                    }
+                }
+                (
+                    Input {
+                        key: Key::Char('w'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::WordForward);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::WordForward);
+                        }),
+                    }
+                }
+                (
+                    Input {
+                        key: Key::Char('b'),
+                        ctrl: false,
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    let num_buf_len = self.num_buf.len() as u32;
+                    match num_buf_len {
+                        0 => {
+                            self.body.move_cursor(CursorMove::WordBack);
+                        }
+                        _ => self.repeat_action(num_buf_len, move |editor| {
+                            editor.body.move_cursor(CursorMove::WordBack);
+                        }),
+                    }
+                }
+                (
+                    Input {
+                        key: Key::Char('^'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    self.body.move_cursor(CursorMove::Head);
+                }
+                (
+                    Input {
+                        key: Key::Char('$'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    self.body.move_cursor(CursorMove::End);
+                }
+                (
+                    Input {
+                        key: Key::Char('G'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    self.body.move_cursor(CursorMove::Bottom);
+                    self.body.move_cursor(CursorMove::Head);
+                }
+                (
+                    Input {
+                        key: Key::Char('y'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    self.body.yank_text();
+                }
+                (
+                    Input {
+                        key: Key::Char('x'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    self.body.yank_text();
                 }
                 _ => {}
             },
