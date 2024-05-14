@@ -16,7 +16,25 @@ pub(crate) async fn create_db() -> Result<SqlitePool, DbError> {
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             title TEXT NOT NULL UNIQUE,
             body TEXT,
-            links TEXT
+            has_links BOOL NOT NULL
+        );",
+    )
+    .execute(&conn)
+    .await?;
+
+    // Create the links table if it doesn't exist
+    let _links_query = sqlx::query(
+        "CREATE TABLE IF NOT EXISTS links (
+            id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+            start_x INTEGER NOT NULL,
+            start_y INTEGER NOT NULL,
+            end_x INTEGER NOT NULL,
+            end_y INTEGER NOT NULL,
+            text TEXT NOT NULL,
+            parent_note_id INTEGER NOT NULL,
+            linked_note_id INTEGER NOT NULL,
+            FOREIGN KEY(parent_note_id) REFERENCES notes(id),
+            FOREIGN KEY(linked_note_id) REFERENCES notes(id)
         );",
     )
     .execute(&conn)
