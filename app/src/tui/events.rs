@@ -1,6 +1,6 @@
 use color_eyre::eyre::{Context, Result};
 use crossterm::event::{self, Event, KeyEventKind};
-use tui_textarea::{Input, Key};
+use tuipaz_textarea::{Input, Key};
 
 use crate::db::db_mac::DbMac;
 
