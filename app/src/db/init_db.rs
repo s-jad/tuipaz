@@ -11,7 +11,7 @@ pub(crate) async fn create_db() -> Result<SqlitePool, DbError> {
         .await
         .map_err(|e| create_db_error(e.to_string()))?;
 
-    let _schema_query = sqlx::query(
+    let _notes_table_query = sqlx::query(
         "CREATE TABLE IF NOT EXISTS notes (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
             title TEXT NOT NULL UNIQUE,
@@ -23,13 +23,13 @@ pub(crate) async fn create_db() -> Result<SqlitePool, DbError> {
     .await?;
 
     // Create the links table if it doesn't exist
-    let _links_query = sqlx::query(
+    let _links_table_query = sqlx::query(
         "CREATE TABLE IF NOT EXISTS links (
             id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-            start_x INTEGER NOT NULL,
-            start_y INTEGER NOT NULL,
-            end_x INTEGER NOT NULL,
-            end_y INTEGER NOT NULL,
+            link_text_id INTEGER NOT NULL,
+            text_row INTEGER NOT NULL,
+            start_col INTEGER NOT NULL,
+            end_col INTEGER NOT NULL,
             text TEXT NOT NULL,
             parent_note_id INTEGER NOT NULL,
             linked_note_id INTEGER NOT NULL,
