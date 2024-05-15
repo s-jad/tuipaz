@@ -1,0 +1,3 @@
+[submodule "app/libs/tuipaz-textarea"]
+	path = app/libs/tuipaz-textarea
+	url = git@github.com:s-jad/tuipaz-textarea.git
