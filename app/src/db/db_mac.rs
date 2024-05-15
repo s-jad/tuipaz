@@ -32,10 +32,10 @@ impl ToString for NoteIdentifier {
     Deserialize,
 )]
 pub(crate) struct DbNoteLink {
-    pub(crate) start_x: i64,
-    pub(crate) start_y: i64,
-    pub(crate) end_x: i64,
-    pub(crate) end_y: i64,
+    pub(crate) link_text_id: i64,
+    pub(crate) text_row: i64,
+    pub(crate) start_col: i64,
+    pub(crate) end_col: i64,
     pub(crate) linked_note_id: i64,
 }
 
@@ -130,7 +130,7 @@ impl DbMac {
     ) -> Result<Vec<DbNoteLink>> {
         let result = sqlx::query_as!(
             DbNoteLink,
-            "SELECT start_x, start_y, end_x, end_y, linked_note_id FROM links WHERE parent_note_id=?",
+            "SELECT link_text_id, text_row, start_col, end_col, linked_note_id FROM links WHERE parent_note_id=?",
             parent_note_id
         )
         .fetch_all(db)
