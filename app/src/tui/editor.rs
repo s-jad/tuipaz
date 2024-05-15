@@ -5,7 +5,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{block::Title, Block, Borders, Padding, Widget},
 };
-use tui_textarea::{CursorMove, Input, Key, TextArea};
+use tuipaz_textarea::{CursorMove, Input, Key, TextArea};
 
 use crate::db::db_mac::DbNoteLink;
 
@@ -19,7 +19,6 @@ pub(crate) struct Editor<'a> {
     pub(crate) note_id: Option<i64>,
     pub(crate) body: TextArea<'a>,
     pub(crate) links: Vec<Link>,
-    pub(crate) pending_link_pos: (Option<Pos>, Option<Pos>),
     pub(crate) mode: EditorMode,
     pub(crate) block_info: String,
     pub(crate) prev_cursor: CursorPosition,
@@ -29,34 +28,34 @@ pub(crate) struct Editor<'a> {
 }
 
 #[derive(Debug, Clone)]
-struct Pos {
-    row: usize,
-    col: usize,
+pub(crate) struct LinkRange {
+    start: usize,
+    end: usize,
 }
 
-impl Pos {
-    fn new(row: usize, col: usize) -> Self {
-        Self { row, col }
+impl LinkRange {
+    fn new(start: usize, end: usize) -> Self {
+        Self { start, end }
     }
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Link {
-    start: Pos,
-    end: Pos,
-    linked_note: i64,
+    pub(crate) link_text_id: i64,
+    pub(crate) row: i64,
+    pub(crate) range: LinkRange,
+    pub(crate) linked_note: i64,
 }
 
 impl Link {
     pub(crate) fn from_db_link(db_link: DbNoteLink) -> Self {
-        let start = Pos::new(db_link.start_x as usize, db_link.start_y as usize);
-        let end = Pos::new(db_link.end_x as usize, db_link.end_y as usize);
-        let linked_note = db_link.linked_note_id;
+        let range = LinkRange::new(db_link.start_col as usize, db_link.end_col as usize);
 
         Self {
-            start,
-            end,
-            linked_note,
+            link_text_id: db_link.link_text_id,
+            row: db_link.text_row,
+            range,
+            linked_note: db_link.linked_note_id,
         }
     }
 }
@@ -127,7 +126,6 @@ impl<'a> Editor<'a> {
             note_id,
             body,
             links,
-            pending_link_pos: (None, None),
             mode: EditorMode::Normal,
             block_info,
             prev_cursor: CursorPosition::Head,
@@ -164,18 +162,6 @@ impl<'a> Editor<'a> {
             EditorMode::Insert => match input {
                 Input { key: Key::Esc, .. } => {
                     self.set_mode(EditorMode::Normal);
-                }
-                Input {
-                    key: Key::Char('['),
-                    ..
-                } => {
-                    self.start_link();
-                }
-                Input {
-                    key: Key::Char(']'),
-                    ..
-                } => {
-                    self.end_link();
                 }
                 input => {
                     self.body.input(input);
@@ -922,16 +908,6 @@ impl<'a> Editor<'a> {
                 );
                 acc
             }) as u16
-    }
-
-    fn start_link(&mut self) {
-        let cursor_pos = self.body.cursor();
-        self.pending_link_pos.0 = Some(Pos::new(cursor_pos.0, cursor_pos.1));
-    }
-
-    fn end_link(&mut self) {
-        let cursor_pos = self.body.cursor();
-        self.pending_link_pos.0 = Some(Pos::new(cursor_pos.0, cursor_pos.1));
     }
 }
 
