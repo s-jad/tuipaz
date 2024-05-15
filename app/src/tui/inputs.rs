@@ -5,7 +5,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{Block, BorderType, Borders, Widget},
 };
-use tui_textarea::TextArea;
+use tuipaz_textarea::TextArea;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum InputState {
