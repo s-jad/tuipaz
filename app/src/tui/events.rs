@@ -2,7 +2,7 @@ use color_eyre::eyre::{Context, Result};
 use crossterm::event::{self, Event, KeyEventKind};
 use tuipaz_textarea::{Input, Key};
 
-use crate::db::db_mac::DbMac;
+use crate::db::db_mac::{DbMac, DbNoteLink};
 
 use super::{
     app::{App, AppState, Screen, SidebarState},
@@ -41,7 +41,16 @@ impl Events {
                 Input {
                     key: Key::Enter, ..
                 } => {
-                    Self::btn_action(app);
+                    let btn_state = app
+                        .btns
+                        .get(&app.btn_idx)
+                        .expect("btn should exist")
+                        .get_state();
+
+                    match btn_state {
+                        ButtonState::Active => Self::btn_action(app),
+                        _ => {}
+                    }
                 }
                 _ => {}
             },
@@ -184,12 +193,12 @@ impl Events {
     }
 
     async fn save_note(app: &mut App<'_>) -> Result<()> {
-        let has_links = match app.editor.links.len() {
+        let has_links = match app.editor.body.links.len() {
             0 => false,
             _ => true,
         };
 
-        let result = match app.editor.note_id {
+        let save_note_result = match app.editor.note_id {
             Some(id) => {
                 let body = app.editor.body.lines().join("\n");
 
@@ -201,22 +210,56 @@ impl Events {
             }
         };
 
-        match &result {
-            Ok(_) => {
-                let new_msg = UserMessage::new("Note saved!".to_string(), MessageType::Info);
-                app.user_msg = new_msg;
-                app.prev_screen = app.current_screen;
-                app.current_screen = Screen::Popup;
-            }
+        match save_note_result {
+            Ok(parent_id) => match has_links {
+                true => {
+                    let db_links = app
+                        .editor
+                        .links
+                        .clone()
+                        .into_iter()
+                        .map(|link| link.to_db_link())
+                        .collect::<Vec<DbNoteLink>>();
+                    let result = DbMac::save_links(&app.db, db_links, parent_id).await;
+
+                    match result {
+                        Ok(_) => {
+                            let new_msg =
+                                UserMessage::new("Note saved!".to_string(), MessageType::Info);
+                            app.user_msg = new_msg;
+                            app.prev_screen = app.current_screen;
+                            app.current_screen = Screen::Popup;
+                            return Ok(());
+                        }
+                        Err(err) => {
+                            let new_msg = UserMessage::new(
+                                format!("Error saving note!: {:?}", err),
+                                MessageType::Error,
+                            );
+                            app.user_msg = new_msg;
+                            app.prev_screen = app.current_screen;
+                            app.current_screen = Screen::Popup;
+                            return Err(err);
+                        }
+                    }
+                }
+                false => {
+                    let new_msg = UserMessage::new("Note saved!".to_string(), MessageType::Info);
+                    app.user_msg = new_msg;
+                    app.prev_screen = app.current_screen;
+                    app.current_screen = Screen::Popup;
+                    return Ok(());
+                }
+            },
             Err(err) => {
                 let new_msg =
                     UserMessage::new(format!("Error saving note!: {:?}", err), MessageType::Error);
                 app.user_msg = new_msg;
                 app.prev_screen = app.current_screen;
                 app.current_screen = Screen::Popup;
+                return Err(err);
             }
         }
-        return result;
     }
 
     async fn load_note(app: &mut App<'_>) -> Result<()> {
@@ -270,14 +313,23 @@ impl Events {
             .btns
             .get_mut(&app.btn_idx)
             .expect("Selected btn should exist");
-        inactive_btn.set_state(ButtonState::Inactive);
+
+        match inactive_btn.get_state() {
+            ButtonState::Unavailable => {}
+            _ => inactive_btn.set_state(ButtonState::Inactive),
+        }
 
         app.btn_idx = (app.btn_idx + 1) % (app.btns.len()) as u8;
+
         let active_btn = app
             .btns
             .get_mut(&app.btn_idx)
             .expect("Selected btn should exist");
-        active_btn.set_state(ButtonState::Active);
+
+        match active_btn.get_state() {
+            ButtonState::Unavailable => {}
+            _ => active_btn.set_state(ButtonState::Active),
+        }
     }
 
     fn btn_action(app: &mut App) {
