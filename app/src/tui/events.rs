@@ -99,11 +99,56 @@ impl Events {
                 } => {
                     Self::toggle_sidebar(app);
                 }
+                Input {
+                    key: Key::Char('['),
+                    ..
+                }
+                | Input {
+                    key: Key::Char(']'),
+                    ..
+                } => {
+                    app.editor.handle_input(input);
+                    let num_text_links = app.editor.body.links.len();
+                    let num_editor_links = app.editor.links.len();
+                    if num_text_links != num_editor_links {
+                        app.pending_link = Some(app.editor.body.links[num_text_links - 1]);
+                        app.current_screen = Screen::NewLinkedNote;
+                    }
+                }
                 input => {
                     app.editor.handle_input(input);
                 }
             },
             Screen::NewNote => match input {
+                Input {
+                    key: Key::Char('q'),
+                    alt: true,
+                    ..
+                } => {
+                    Self::show_exit_screen(app);
+                }
+                Input { key: Key::Esc, .. } => {
+                    app.current_screen = Screen::Main;
+                }
+                Input {
+                    key: Key::Enter, ..
+                } => {
+                    Self::input_action(app);
+                }
+                Input {
+                    key: Key::Backspace,
+                    ..
+                } => {
+                    app.user_input.text.delete_char();
+                    if app.user_input.get_state() == InputState::Error {
+                        app.user_input.set_state(InputState::Active);
+                    }
+                }
+                input => {
+                    app.user_input.text.input(input);
+                }
+            },
+            Screen::NewLinkedNote => match input {
                 Input {
                     key: Key::Char('q'),
                     alt: true,
@@ -294,7 +339,7 @@ impl Events {
 
     async fn load_note(app: &mut App<'_>) -> Result<()> {
         let note_idx = app.note_list.selected;
-        let id = app.note_list.note_vec[note_idx].id;
+        let id = app.note_list.note_identifiers[note_idx].id;
 
         let result = DbMac::load_note(&app.db, id).await;
 
@@ -391,7 +436,12 @@ impl Events {
             InputAction::NewNoteTitle => {
                 let title = app.user_input.text.lines()[0].clone();
 
-                match app.note_list.note_vec.iter().any(|nid| nid.title == title) {
+                match app
+                    .note_list
+                    .note_identifiers
+                    .iter()
+                    .any(|nid| nid.title == title)
+                {
                     true => {
                         app.user_input.set_state(InputState::Error);
                     }
@@ -404,7 +454,12 @@ impl Events {
             InputAction::NewNote => {
                 let title = app.user_input.text.lines()[0].clone();
 
-                match app.note_list.note_vec.iter().any(|nid| nid.title == title) {
+                match app
+                    .note_list
+                    .note_identifiers
+                    .iter()
+                    .any(|nid| nid.title == title)
+                {
                     true => {
                         app.user_input.set_state(InputState::Error);
                     }
