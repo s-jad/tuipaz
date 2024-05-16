@@ -51,23 +51,35 @@ impl<'l> NoteList<'l> {
 
     pub(crate) fn prev(&mut self) {
         // Guard against crashes if user has no notes
-        if self.notes.len() == 0 {
+        if self.note_vec.len() == 0 {
             return;
         }
-        self.selected = self.selected.saturating_add(self.notes.len() - 1) % self.notes.len();
+        self.selected = self.selected.saturating_add(self.note_vec.len() - 1) % self.note_vec.len();
     }
 
     pub(crate) fn next(&mut self) {
         // Guard against crashes if user has no notes
-        if self.notes.len() == 0 {
+        if self.note_vec.len() == 0 {
             return;
         }
-        self.selected = self.selected.saturating_add(1) % self.notes.len();
+        self.selected = self.selected.saturating_add(1) % self.note_vec.len();
+    }
+
+    pub(crate) fn update(&mut self, new_nid: NoteIdentifier) {
+        self.note_vec.push(new_nid);
+    }
+
+    pub(crate) fn replace(&mut self, replace_nid: NoteIdentifier) {
+        self.note_vec
+            .iter_mut()
+            .find(|nid| nid.id == replace_nid.id)
+            .expect("Note id should be present")
+            .title = replace_nid.title;
     }
 }
 
 impl<'l> Widget for NoteList<'l> {
-    fn render(mut self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
+    fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
     where
         Self: Sized,
     {
