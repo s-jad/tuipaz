@@ -1,6 +1,8 @@
 use color_eyre::eyre::{eyre, Result};
 use serde::{Deserialize, Serialize};
-use sqlx::SqlitePool;
+use sqlx::{query, QueryBuilder, SqlitePool};
+
+use crate::tui::editor::Link;
 
 #[derive(
     sqlx::
@@ -32,8 +34,9 @@ impl ToString for NoteIdentifier {
     Deserialize,
 )]
 pub(crate) struct DbNoteLink {
-    pub(crate) link_text_id: i64,
-    pub(crate) text_row: i64,
+    pub(crate) parent_note_id: i64,
+    pub(crate) textarea_id: i64,
+    pub(crate) textarea_row: i64,
     pub(crate) start_col: i64,
     pub(crate) end_col: i64,
     pub(crate) linked_note_id: i64,
@@ -70,19 +73,48 @@ impl DbMac {
         body: String,
         title: String,
         has_links: bool,
-    ) -> Result<()> {
+    ) -> Result<i64> {
         let result = sqlx::query!(
-            "INSERT INTO notes (title, body, has_links) VALUES (?,?,?)",
+            "INSERT INTO notes (title, body, has_links) VALUES (?,?,?) RETURNING id",
             title,
             body,
             has_links
         )
-        .execute(db)
+        .fetch_one(db)
         .await;
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(row) => Ok(row.id),
             Err(e) => Err(eyre!("Failed to save note: {:?}", e)),
+        }
+    }
+
+    pub(crate) async fn save_links(
+        db: &SqlitePool,
+        links: Vec<DbNoteLink>,
+        parent_note_id: i64,
+    ) -> Result<()> {
+        let mut query_builder = QueryBuilder::new(
+            "INSERT INTO links 
+                (link_text_id, text_row, start_col, end_col, parent_note_id, linked_note_id) ",
+        );
+
+        query_builder.push_values(links.into_iter(), |mut b, link| {
+            b.push_bind(link.textarea_id)
+                .push_bind(link.textarea_row)
+                .push_bind(link.start_col)
+                .push_bind(link.end_col)
+                .push_bind(parent_note_id)
+                .push_bind(link.linked_note_id);
+        });
+
+        let query = query_builder.build();
+
+        let result = query.execute(db).await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(eyre!("Failed to save links: {:?}", e)),
         }
     }
 
@@ -92,19 +124,22 @@ impl DbMac {
         body: String,
         has_links: bool,
         id: i64,
-    ) -> Result<()> {
+    ) -> Result<i64> {
         let result = sqlx::query!(
-            "UPDATE notes SET title=?, body=?, has_links=? WHERE id=?",
+            "UPDATE notes SET title=?, body=?, has_links=? WHERE id=? RETURNING id",
             title,
             body,
             has_links,
             id
         )
-        .execute(db)
+        .fetch_one(db)
         .await;
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(row) => {
+                let id = row.id.expect("Updated note should be in database");
+                Ok(id)
+            }
             Err(e) => Err(eyre!("Failed to save note: {:?}", e)),
         }
     }
@@ -130,7 +165,7 @@ impl DbMac {
     ) -> Result<Vec<DbNoteLink>> {
         let result = sqlx::query_as!(
             DbNoteLink,
-            "SELECT link_text_id, text_row, start_col, end_col, linked_note_id FROM links WHERE parent_note_id=?",
+            "SELECT parent_note_id, textarea_id, textarea_row, start_col, end_col, linked_note_id FROM links WHERE parent_note_id=?",
             parent_note_id
         )
         .fetch_all(db)
