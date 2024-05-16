@@ -110,6 +110,15 @@ impl Events {
                 } => {
                     Self::input_action(app);
                 }
+                Input {
+                    key: Key::Backspace,
+                    ..
+                } => {
+                    app.user_input.text.delete_char();
+                    if app.user_input.get_state() == InputState::Error {
+                        app.user_input.set_state(InputState::Active);
+                    }
+                }
                 input => {
                     app.user_input.text.input(input);
                 }
@@ -299,17 +308,32 @@ impl Events {
         match app.user_input.get_action() {
             InputAction::NewNoteTitle => {
                 let title = app.user_input.text.lines()[0].clone();
-                app.editor.set_title(title);
 
-                app.current_screen = Screen::Main;
+                match app.note_list.note_vec.iter().any(|nid| nid.title == title) {
+                    true => {
+                        app.user_input.set_state(InputState::Error);
+                    }
+                    false => {
+                        app.editor.set_title(title);
+                        app.current_screen = Screen::Main;
+                    }
+                }
             }
             InputAction::NewNote => {
                 let title = app.user_input.text.lines()[0].clone();
-                let body = vec!["".to_string()];
-                let note_id = None;
-                app.editor = Editor::new(title, body, vec![], note_id);
 
-                app.current_screen = Screen::Main;
+                match app.note_list.note_vec.iter().any(|nid| nid.title == title) {
+                    true => {
+                        app.user_input.set_state(InputState::Error);
+                    }
+                    false => {
+                        let body = vec!["".to_string()];
+                        let note_id = None;
+                        app.editor = Editor::new(title, body, vec![], note_id);
+
+                        app.current_screen = Screen::Main;
+                    }
+                }
             }
         }
     }
