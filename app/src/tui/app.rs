@@ -57,11 +57,12 @@ pub(crate) struct App<'a> {
 
 impl<'a> App<'a> {
     pub fn new(db: Pool<Sqlite>, note_identifiers: Vec<NoteIdentifier>) -> Self {
-        let note_list = NoteList::new(
-            note_identifiers
-                .into_iter()
-                .collect::<Vec<NoteIdentifier>>(),
-        );
+        let load_btn_state = match note_identifiers.len() {
+            0 => ButtonState::Unavailable,
+            _ => ButtonState::Inactive,
+        };
+
+        let note_list = NoteList::new(note_identifiers);
 
         Self {
             state: AppState::default(),
@@ -83,7 +84,7 @@ impl<'a> App<'a> {
                     1,
                     Button::new(
                         "Load".to_owned(),
-                        ButtonState::Inactive,
+                        load_btn_state,
                         ButtonAction::RenderLoadNoteScreen,
                     ),
                 ),
