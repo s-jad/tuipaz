@@ -4,6 +4,7 @@ use color_eyre::eyre::{Context, Result};
 use sqlx::{Pool, Sqlite};
 
 use crate::db::db_mac::NoteIdentifier;
+use tuipaz_textarea::Link as TextAreaLink;
 
 use super::{
     buttons::{Button, ButtonAction, ButtonState},
@@ -28,6 +29,7 @@ pub(crate) enum Screen {
     Welcome,
     Main,
     NewNote,
+    NewLinkedNote,
     LoadNote,
     Popup,
     Exiting,
@@ -53,6 +55,7 @@ pub(crate) struct App<'a> {
     pub(crate) user_msg: UserMessage,
     pub(crate) sidebar: SidebarState,
     pub(crate) sidebar_size: u16,
+    pub(crate) pending_link: Option<TextAreaLink>,
 }
 
 impl<'a> App<'a> {
@@ -94,6 +97,7 @@ impl<'a> App<'a> {
             user_msg: UserMessage::welcome(),
             sidebar: SidebarState::Open(20),
             sidebar_size: 20,
+            pending_link: None,
         }
     }
 }
