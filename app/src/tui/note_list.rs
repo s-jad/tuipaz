@@ -11,14 +11,13 @@ use crate::db::db_mac::NoteIdentifier;
 #[derive(Debug, Clone)]
 pub(crate) struct NoteList<'l> {
     pub(crate) selected: usize,
-    pub(crate) note_vec: Vec<NoteIdentifier>,
+    pub(crate) note_identifiers: Vec<NoteIdentifier>,
     pub(crate) notes: List<'l>,
 }
 
 impl<'l> NoteList<'l> {
     pub(crate) fn new(note_identifiers: Vec<NoteIdentifier>) -> Self {
         let selected = 0;
-        let note_vec = note_identifiers.clone();
         let list_info = Line::styled(
             " <Enter> Load Note | <Tab/ArrowUp> Next | <Shift-Tab/ArrowDown> Prev ",
             Style::default().fg(Color::Red),
@@ -44,33 +43,35 @@ impl<'l> NoteList<'l> {
 
         Self {
             selected,
-            note_vec,
+            note_identifiers,
             notes,
         }
     }
 
     pub(crate) fn prev(&mut self) {
+        let nids_len = self.note_identifiers.len();
         // Guard against crashes if user has no notes
-        if self.note_vec.len() == 0 {
+        if nids_len == 0 {
             return;
         }
-        self.selected = self.selected.saturating_add(self.note_vec.len() - 1) % self.note_vec.len();
+        self.selected = self.selected.saturating_add(nids_len - 1) % nids_len;
     }
 
     pub(crate) fn next(&mut self) {
+        let nids_len = self.note_identifiers.len();
         // Guard against crashes if user has no notes
-        if self.note_vec.len() == 0 {
+        if nids_len == 0 {
             return;
         }
-        self.selected = self.selected.saturating_add(1) % self.note_vec.len();
+        self.selected = self.selected.saturating_add(1) % nids_len;
     }
 
     pub(crate) fn update(&mut self, new_nid: NoteIdentifier) {
-        self.note_vec.push(new_nid);
+        self.note_identifiers.push(new_nid);
     }
 
     pub(crate) fn replace(&mut self, replace_nid: NoteIdentifier) {
-        self.note_vec
+        self.note_identifiers
             .iter_mut()
             .find(|nid| nid.id == replace_nid.id)
             .expect("Note id should be present")
@@ -99,7 +100,7 @@ impl<'l> Widget for NoteList<'l> {
         let mut state = ListState::default().with_selected(Some(self.selected));
 
         let list = List::from_iter(
-            self.note_vec
+            self.note_identifiers
                 .into_iter()
                 .map(|nid| ListItem::new(Line::from(nid.title))),
         )
