@@ -16,6 +16,7 @@ pub(crate) fn ui(app: &mut App, frame: &mut Frame) {
         Screen::Welcome => render_welcome_screen(app, frame),
         Screen::Main => render_main_screen(app, frame),
         Screen::NewNote => render_new_note_screen(app, frame),
+        Screen::NewLinkedNote => render_new_linked_note_screen(app, frame),
         Screen::LoadNote => render_load_note_screen(app, frame),
         Screen::Popup => render_popup(app, frame),
         Screen::Exiting => render_exit_screen(frame),
@@ -70,6 +71,7 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
         .btns
         .get_mut(&1)
         .expect("Load note btn should be present");
+
     load_note_btn.clone().render(btn_layout[3], buf);
 }
 
@@ -149,4 +151,22 @@ fn render_new_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
     app.user_input
         .clone()
         .render(centered_rect(50, 20, area), buf);
+}
+
+fn render_new_linked_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
+    let area = frame.size();
+    let buf = frame.buffer_mut();
+
+    let layout = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints(&[Constraint::Percentage(50), Constraint::Percentage(50)])
+        .split(area);
+
+    app.user_input
+        .clone()
+        .render(centered_rect(80, 20, layout[0]), buf);
+
+    app.note_list
+        .clone()
+        .render(centered_rect(80, 100, layout[1]), buf);
 }
