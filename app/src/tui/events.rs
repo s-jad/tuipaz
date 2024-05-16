@@ -2,7 +2,7 @@ use color_eyre::eyre::{Context, Result};
 use crossterm::event::{self, Event, KeyEventKind};
 use tuipaz_textarea::{Input, Key};
 
-use crate::db::db_mac::{DbMac, DbNoteLink};
+use crate::db::db_mac::{DbMac, DbNoteLink, NoteIdentifier};
 
 use super::{
     app::{App, AppState, Screen, SidebarState},
@@ -198,59 +198,89 @@ impl Events {
             _ => true,
         };
 
-        let save_note_result = match app.editor.note_id {
+        let (save_note_result, updated) = match app.editor.note_id {
             Some(id) => {
                 let body = app.editor.body.lines().join("\n");
 
-                DbMac::update_note(&app.db, app.editor.title.clone(), body, has_links, id).await
+                (
+                    DbMac::update_note(&app.db, app.editor.title.clone(), body, has_links, id)
+                        .await,
+                    true,
+                )
             }
             None => {
                 let body = app.editor.body.lines().join("\n");
-                DbMac::save_note(&app.db, body, app.editor.title.clone(), has_links).await
+                (
+                    DbMac::save_note(&app.db, body, app.editor.title.clone(), has_links).await,
+                    false,
+                )
             }
         };
 
         match save_note_result {
-            Ok(parent_id) => match has_links {
-                true => {
-                    let db_links = app
-                        .editor
-                        .links
-                        .clone()
-                        .into_iter()
-                        .map(|link| link.to_db_link())
-                        .collect::<Vec<DbNoteLink>>();
-                    let result = DbMac::save_links(&app.db, db_links, parent_id).await;
+            Ok(parent_id) => {
+                if updated {
+                    let new_nid = NoteIdentifier {
+                        id: parent_id,
+                        title: app.editor.title.clone(),
+                    };
 
-                    match result {
-                        Ok(_) => {
-                            let new_msg =
-                                UserMessage::new("Note saved!".to_string(), MessageType::Info);
-                            app.user_msg = new_msg;
-                            app.prev_screen = app.current_screen;
-                            app.current_screen = Screen::Popup;
-                            return Ok(());
-                        }
-                        Err(err) => {
-                            let new_msg = UserMessage::new(
-                                format!("Error saving note!: {:?}", err),
-                                MessageType::Error,
-                            );
-                            app.user_msg = new_msg;
-                            app.prev_screen = app.current_screen;
-                            app.current_screen = Screen::Popup;
-                            return Err(err);
+                    // Replaces prev note title with new one in the load note screen
+                    app.note_list.replace(new_nid);
+                } else {
+                    let new_nid = NoteIdentifier {
+                        id: parent_id,
+                        title: app.editor.title.clone(),
+                    };
+
+                    // Makes the note available in the load note screen
+                    app.note_list.update(new_nid);
+                    // Triggers update_note on next save
+                    app.editor.note_id = Some(parent_id);
+                }
+
+                match has_links {
+                    true => {
+                        let db_links = app
+                            .editor
+                            .links
+                            .clone()
+                            .into_iter()
+                            .map(|link| link.to_db_link())
+                            .collect::<Vec<DbNoteLink>>();
+                        let result = DbMac::save_links(&app.db, db_links, parent_id).await;
+
+                        match result {
+                            Ok(_) => {
+                                let new_msg =
+                                    UserMessage::new("Note saved!".to_string(), MessageType::Info);
+                                app.user_msg = new_msg;
+                                app.prev_screen = app.current_screen;
+                                app.current_screen = Screen::Popup;
+                                return Ok(());
+                            }
+                            Err(err) => {
+                                let new_msg = UserMessage::new(
+                                    format!("Error saving note links!: {:?}", err),
+                                    MessageType::Error,
+                                );
+                                app.user_msg = new_msg;
+                                app.prev_screen = app.current_screen;
+                                app.current_screen = Screen::Popup;
+                                return Err(err);
+                            }
                         }
                     }
+                    false => {
+                        let new_msg =
+                            UserMessage::new("Note saved!".to_string(), MessageType::Info);
+                        app.user_msg = new_msg;
+                        app.prev_screen = app.current_screen;
+                        app.current_screen = Screen::Popup;
+                        return Ok(());
+                    }
                 }
-                false => {
-                    let new_msg = UserMessage::new("Note saved!".to_string(), MessageType::Info);
-                    app.user_msg = new_msg;
-                    app.prev_screen = app.current_screen;
-                    app.current_screen = Screen::Popup;
-                    return Ok(());
-                }
-            },
+            }
             Err(err) => {
                 let new_msg =
                     UserMessage::new(format!("Error saving note!: {:?}", err), MessageType::Error);
