@@ -9,6 +9,7 @@ pub(crate) enum ButtonState {
     Active,
     Clicked,
     Inactive,
+    Unavailable,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -38,6 +39,10 @@ impl Button {
         self.state = new_state;
     }
 
+    pub(crate) fn get_state(&self) -> ButtonState {
+        self.state
+    }
+
     pub(crate) fn get_action(&self) -> ButtonAction {
         self.action
     }
@@ -52,6 +57,7 @@ impl Widget for Button {
             ButtonState::Active => (Color::default(), Style::default().bold()),
             ButtonState::Clicked => (Color::Yellow, Style::default().bold()),
             ButtonState::Inactive => (Color::Blue, Style::default().dim()),
+            ButtonState::Unavailable => (Color::Gray, Style::default().dim()),
         };
 
         let btn_block = Block::new()
