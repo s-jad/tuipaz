@@ -7,11 +7,12 @@ use ratatui::{
 };
 use tuipaz_textarea::TextArea;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub(crate) enum InputState {
     Active,
     Submit,
     Inactive,
+    Error,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -43,6 +44,10 @@ impl<'i> UserInput<'i> {
         self.state = new_state;
     }
 
+    pub(crate) fn get_state(&mut self) -> InputState {
+        self.state
+    }
+
     pub(crate) fn get_action(&mut self) -> InputAction {
         self.action
     }
@@ -57,20 +62,31 @@ impl Widget for UserInput<'_> {
             InputState::Active => (Color::Yellow, Color::default()),
             InputState::Submit => (Color::Yellow, Color::Red),
             InputState::Inactive => (Color::Blue, Color::Blue),
+            InputState::Error => (Color::Red, Color::default()),
         };
 
-        let (title, hint_text) = match self.action {
-            InputAction::NewNoteTitle | InputAction::NewNote => (
-                " Note title: ",
-                " <Esc> return to prev screen <Enter> submit title ",
+        let (title_span, input_hint) = match (self.action, self.state) {
+            (InputAction::NewNoteTitle | InputAction::NewNote, InputState::Error) => (
+                Span::styled(
+                    format!(" Error: {:?} already exists ", self.text.lines()),
+                    Style::default().bold().fg(Color::Red),
+                ),
+                Span::styled(
+                    " Please choose a different title ",
+                    Style::default().bold().fg(Color::Red),
+                ),
+            ),
+            (InputAction::NewNoteTitle | InputAction::NewNote, _) => (
+                Span::styled(" Note title: ", Style::default().bold().fg(title_clr)),
+                Span::styled(
+                    " <Esc> return to prev screen <Enter> submit title ",
+                    Style::default().bold().fg(fg_clr),
+                ),
             ),
         };
 
-        let input_title = Span::styled(title, Style::default().bold().fg(title_clr));
-        let input_hint = Span::styled(hint_text, Style::default().bold().fg(fg_clr));
-
         let input_block = Block::new()
-            .title(Line::from(vec![input_title]))
+            .title(Line::from(vec![title_span]))
             .title_alignment(Alignment::Left)
             .title_bottom(Line::from(vec![input_hint]))
             .borders(Borders::ALL)
