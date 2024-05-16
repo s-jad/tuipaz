@@ -28,34 +28,35 @@ pub(crate) struct Editor<'a> {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct LinkRange {
-    start: usize,
-    end: usize,
-}
-
-impl LinkRange {
-    fn new(start: usize, end: usize) -> Self {
-        Self { start, end }
-    }
-}
-
-#[derive(Debug, Clone)]
 pub(crate) struct Link {
-    pub(crate) link_text_id: i64,
-    pub(crate) row: i64,
-    pub(crate) range: LinkRange,
-    pub(crate) linked_note: i64,
+    pub(crate) id: i64,
+    pub(crate) text_id: i64,
+    pub(crate) linked_id: i64,
+    pub(crate) row: usize,
+    pub(crate) start_col: usize,
+    pub(crate) end_col: usize,
 }
 
 impl Link {
     pub(crate) fn from_db_link(db_link: DbNoteLink) -> Self {
-        let range = LinkRange::new(db_link.start_col as usize, db_link.end_col as usize);
-
         Self {
-            link_text_id: db_link.link_text_id,
-            row: db_link.text_row,
-            range,
-            linked_note: db_link.linked_note_id,
+            id: db_link.parent_note_id,
+            text_id: db_link.textarea_id,
+            linked_id: db_link.linked_note_id,
+            row: db_link.textarea_row as usize,
+            start_col: db_link.start_col as usize,
+            end_col: db_link.end_col as usize,
+        }
+    }
+
+    pub(crate) fn to_db_link(self) -> DbNoteLink {
+        DbNoteLink {
+            parent_note_id: self.id,
+            textarea_id: self.text_id,
+            textarea_row: self.row as i64,
+            start_col: self.start_col as i64,
+            end_col: self.end_col as i64,
+            linked_note_id: self.linked_id,
         }
     }
 }
