@@ -164,9 +164,9 @@ fn render_new_linked_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
 
     app.user_input
         .clone()
-        .render(centered_rect(80, 20, layout[0]), buf);
+        .render(centered_rect(90, 20, layout[0]), buf);
 
     app.note_list
         .clone()
-        .render(centered_rect(80, 100, layout[1]), buf);
+        .render(centered_rect(90, 20, layout[1]), buf);
 }
