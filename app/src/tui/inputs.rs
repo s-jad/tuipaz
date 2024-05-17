@@ -19,6 +19,7 @@ pub(crate) enum InputState {
 pub(crate) enum InputAction {
     NewNoteTitle,
     NewNote,
+    NewLinkedNote,
 }
 
 #[derive(Debug, Clone)]
@@ -32,6 +33,8 @@ impl<'i> UserInput<'i> {
     pub(crate) fn new(state: InputState, action: InputAction) -> Self {
         let mut text = TextArea::default();
         text.set_cursor_line_style(Style::default());
+        text.set_placeholder_text("Enter a title...");
+        text.set_placeholder_style(Style::default().dim());
 
         Self {
             text,
@@ -46,6 +49,10 @@ impl<'i> UserInput<'i> {
 
     pub(crate) fn get_state(&mut self) -> InputState {
         self.state
+    }
+
+    pub(crate) fn set_action(&mut self, new_action: InputAction) {
+        self.action = new_action
     }
 
     pub(crate) fn get_action(&mut self) -> InputAction {
@@ -66,7 +73,10 @@ impl Widget for UserInput<'_> {
         };
 
         let (title_span, input_hint) = match (self.action, self.state) {
-            (InputAction::NewNoteTitle | InputAction::NewNote, InputState::Error) => (
+            (
+                InputAction::NewNoteTitle | InputAction::NewNote | InputAction::NewLinkedNote,
+                InputState::Error,
+            ) => (
                 Span::styled(
                     format!(" Error: {:?} already exists ", self.text.lines()),
                     Style::default().bold().fg(Color::Red),
@@ -76,8 +86,8 @@ impl Widget for UserInput<'_> {
                     Style::default().bold().fg(Color::Red),
                 ),
             ),
-            (InputAction::NewNoteTitle | InputAction::NewNote, _) => (
-                Span::styled(" Note title: ", Style::default().bold().fg(title_clr)),
+            (InputAction::NewNoteTitle | InputAction::NewNote | InputAction::NewLinkedNote, _) => (
+                Span::styled(" New Note ", Style::default().bold().fg(title_clr)),
                 Span::styled(
                     " <Esc> return to prev screen <Enter> submit title ",
                     Style::default().bold().fg(fg_clr),
