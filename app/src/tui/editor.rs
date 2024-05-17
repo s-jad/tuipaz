@@ -5,7 +5,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{block::Title, Block, Borders, Padding, Widget},
 };
-use tuipaz_textarea::{CursorMove, Input, Key, TextArea};
+use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea};
 
 use crate::db::db_mac::DbNoteLink;
 
@@ -59,6 +59,15 @@ impl Link {
             linked_note_id: self.linked_id,
         }
     }
+
+    pub(crate) fn to_textarea_link(&self) -> TextAreaLink {
+        TextAreaLink {
+            id: self.text_id as usize,
+            row: self.row,
+            start_col: self.start_col,
+            end_col: self.end_col,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -90,7 +99,12 @@ impl<'a> Editor<'a> {
         links: Vec<Link>,
         note_id: Option<i64>,
     ) -> Self {
-        let mut body = TextArea::new(body);
+        let ta_links = links
+            .iter()
+            .map(|link| link.to_textarea_link())
+            .collect::<Vec<TextAreaLink>>();
+
+        let mut body = TextArea::new(body, ta_links);
         body.set_cursor_line_style(Style::default());
         body.set_selection_style(Style::default().bg(Color::Red));
         body.set_max_histories(1000);
@@ -158,12 +172,25 @@ impl<'a> Editor<'a> {
         self.title = title;
     }
 
+    pub(crate) fn follow_link(&mut self) {}
+
     pub(crate) fn handle_input(&mut self, input: Input) {
         match self.mode {
             EditorMode::Insert => match input {
                 Input { key: Key::Esc, .. } => {
                     self.set_mode(EditorMode::Normal);
                 }
+                Input {
+                    key: Key::Enter, ..
+                } => match self.body.in_link(self.body.cursor()) {
+                    Some(_) => self.follow_link(),
+                    None => {
+                        self.body.input(Input {
+                            key: Key::Enter,
+                            ..Default::default()
+                        });
+                    }
+                },
                 input => {
                     self.body.input(input);
                 }
