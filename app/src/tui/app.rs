@@ -11,7 +11,7 @@ use super::{
     editor::Editor,
     events::Events,
     inputs::{InputAction, InputState, UserInput},
-    note_list::NoteList,
+    note_list::{NoteList, NoteListAction},
     ui::ui,
     user_messages::UserMessage,
     utils::Tui,
@@ -22,6 +22,14 @@ pub(crate) enum AppState {
     #[default]
     Running,
     Exit,
+}
+
+#[derive(PartialEq, Debug, Clone, Copy)]
+pub(crate) enum ActiveWidget {
+    Editor,
+    Sidebar,
+    NoteList,
+    NoteTitleInput,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -48,7 +56,7 @@ pub(crate) struct App<'a> {
     pub(crate) current_screen: Screen,
     pub(crate) prev_screen: Screen,
     pub(crate) editor: Editor<'a>,
-    pub(crate) note_list: NoteList<'a>,
+    pub(crate) note_list: NoteList,
     pub(crate) btns: HashMap<u8, Button>,
     pub(crate) btn_idx: u8,
     pub(crate) user_input: UserInput<'a>,
@@ -56,6 +64,7 @@ pub(crate) struct App<'a> {
     pub(crate) sidebar: SidebarState,
     pub(crate) sidebar_size: u16,
     pub(crate) pending_link: Option<TextAreaLink>,
+    pub(crate) active_widget: Option<ActiveWidget>,
 }
 
 impl<'a> App<'a> {
@@ -65,7 +74,7 @@ impl<'a> App<'a> {
             _ => ButtonState::Inactive,
         };
 
-        let note_list = NoteList::new(note_identifiers);
+        let note_list = NoteList::new(note_identifiers, NoteListAction::LoadNote);
 
         Self {
             state: AppState::default(),
@@ -98,7 +107,12 @@ impl<'a> App<'a> {
             sidebar: SidebarState::Open(20),
             sidebar_size: 20,
             pending_link: None,
+            active_widget: None,
         }
+    }
+
+    pub(crate) fn set_active_widget(&mut self, active: ActiveWidget) {
+        self.active_widget = Some(active);
     }
 }
 
