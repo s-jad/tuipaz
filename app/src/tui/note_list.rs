@@ -1,6 +1,6 @@
 use ratatui::{
-    style::{Color, Modifier, Style},
-    text::Line,
+    style::{Color, Modifier, Style, Stylize},
+    text::{Line, Span},
     widgets::{
         Block, BorderType, Borders, List, ListItem, ListState, Padding, StatefulWidget, Widget,
     },
@@ -9,42 +9,26 @@ use ratatui::{
 use crate::db::db_mac::NoteIdentifier;
 
 #[derive(Debug, Clone)]
-pub(crate) struct NoteList<'l> {
-    pub(crate) selected: usize,
-    pub(crate) note_identifiers: Vec<NoteIdentifier>,
-    pub(crate) notes: List<'l>,
+pub(crate) enum NoteListAction {
+    LoadNote,
+    LinkNote,
 }
 
-impl<'l> NoteList<'l> {
-    pub(crate) fn new(note_identifiers: Vec<NoteIdentifier>) -> Self {
+#[derive(Debug, Clone)]
+pub(crate) struct NoteList {
+    pub(crate) selected: usize,
+    pub(crate) note_identifiers: Vec<NoteIdentifier>,
+    pub(crate) action: NoteListAction,
+}
+
+impl NoteList {
+    pub(crate) fn new(note_identifiers: Vec<NoteIdentifier>, action: NoteListAction) -> Self {
         let selected = 0;
-        let list_info = Line::styled(
-            " <Enter> Load Note | <Tab/ArrowUp> Next | <Shift-Tab/ArrowDown> Prev ",
-            Style::default().fg(Color::Red),
-        );
-
-        let load_note_block = Block::default()
-            .title(" Load Note ")
-            .title_bottom(list_info)
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .padding(Padding::new(1, 1, 1, 1))
-            .style(Style::default());
-
-        let notes = List::from_iter(
-            note_identifiers
-                .into_iter()
-                .map(|nid| ListItem::new(Line::from(nid.title))),
-        )
-        .block(load_note_block)
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD))
-        .highlight_symbol(">>")
-        .repeat_highlight_symbol(true);
 
         Self {
             selected,
             note_identifiers,
-            notes,
+            action,
         }
     }
 
@@ -77,20 +61,34 @@ impl<'l> NoteList<'l> {
             .expect("Note id should be present")
             .title = replace_nid.title;
     }
+
+    pub(crate) fn set_action(&mut self, new_action: NoteListAction) {
+        self.action = new_action;
+    }
 }
 
-impl<'l> Widget for NoteList<'l> {
+impl Widget for NoteList {
     fn render(self, area: ratatui::prelude::Rect, buf: &mut ratatui::prelude::Buffer)
     where
         Self: Sized,
     {
-        let list_info = Line::styled(
-            " <Enter> Load Note | <Tab/ArrowUp> Next | <Shift-Tab/ArrowDown> Prev ",
-            Style::default().fg(Color::Red),
-        );
+        let (title_text, list_info_text) = match self.action {
+            NoteListAction::LoadNote => (
+                " Load Note ",
+                " <Enter> Load Note | <Tab/ArrowUp> Next | <Shift-Tab/ArrowDown> Prev ",
+            ),
+            NoteListAction::LinkNote => (
+                " Link Note ",
+                " <Enter> Link Note | <Tab/ArrowUp> Next | <Shift-Tab/ArrowDown> Prev ",
+            ),
+        };
+
+        let list_info = Line::styled(list_info_text, Style::default().fg(Color::Red));
+
+        let title = Span::styled(title_text, Style::default().bold().fg(Color::Yellow));
 
         let load_note_block = Block::default()
-            .title(" Load Note ")
+            .title(title)
             .title_bottom(list_info)
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
