@@ -70,8 +70,8 @@ pub(crate) struct DbMac;
 impl DbMac {
     pub(crate) async fn save_note(
         db: &SqlitePool,
-        body: String,
         title: String,
+        body: String,
         has_links: bool,
     ) -> Result<i64> {
         let result = sqlx::query!(
@@ -96,7 +96,7 @@ impl DbMac {
     ) -> Result<()> {
         let mut query_builder = QueryBuilder::new(
             "INSERT INTO links 
-                (link_text_id, text_row, start_col, end_col, parent_note_id, linked_note_id) ",
+                (textarea_id, textarea_row, start_col, end_col, parent_note_id, linked_note_id) ",
         );
 
         query_builder.push_values(links.into_iter(), |mut b, link| {
