@@ -5,7 +5,7 @@ use tuipaz_textarea::{Input, Key};
 use crate::db::db_mac::{DbMac, DbNoteLink, NoteIdentifier};
 
 use super::{
-    app::{App, AppState, Screen, SidebarState},
+    app::{ActiveWidget, App, AppState, Screen, SidebarState},
     buttons::{ButtonAction, ButtonState},
     editor::{Editor, Link},
     inputs::{InputAction, InputState, UserInput},
@@ -67,7 +67,15 @@ impl Events {
                     alt: true,
                     ..
                 } => {
-                    Self::save_note(app).await?;
+                    let has_links = match app.editor.body.links.len() {
+                        0 => false,
+                        _ => true,
+                    };
+                    let title = app.editor.title.clone();
+                    let body = app.editor.body.lines().join("\n");
+                    let note_id = app.editor.note_id;
+
+                    Self::save_note(app, title, body, has_links, note_id).await?;
                 }
                 Input {
                     key: Key::Char('l'),
@@ -75,6 +83,7 @@ impl Events {
                     ..
                 } => {
                     app.current_screen = Screen::LoadNote;
+                    app.active_widget = Some(ActiveWidget::NoteList);
                 }
                 Input {
                     key: Key::Char('n'),
@@ -82,7 +91,8 @@ impl Events {
                     ..
                 } => {
                     app.current_screen = Screen::NewNote;
-                    app.user_input = UserInput::new(InputState::Active, InputAction::NewNote);
+                    app.user_input.set_action(InputAction::NewNote);
+                    app.active_widget = Some(ActiveWidget::NoteTitleInput);
                 }
                 Input {
                     key: Key::Char('t'),
@@ -90,7 +100,8 @@ impl Events {
                     ..
                 } => {
                     app.current_screen = Screen::NewNote;
-                    app.user_input = UserInput::new(InputState::Active, InputAction::NewNoteTitle);
+                    app.user_input.set_action(InputAction::NewNoteTitle);
+                    app.active_widget = Some(ActiveWidget::NoteTitleInput);
                 }
                 Input {
                     key: Key::Char('f'),
@@ -110,9 +121,15 @@ impl Events {
                     app.editor.handle_input(input);
                     let num_text_links = app.editor.body.links.len();
                     let num_editor_links = app.editor.links.len();
+
+                    // If there is a link in the textarea that the editor doesnt have
                     if num_text_links != num_editor_links {
                         app.pending_link = Some(app.editor.body.links[num_text_links - 1]);
+
+                        // Set the user_input widget to create a new linked note
+                        app.user_input.set_action(InputAction::NewLinkedNote);
                         app.current_screen = Screen::NewLinkedNote;
+                        app.active_widget = Some(ActiveWidget::NoteTitleInput);
                     }
                 }
                 input => {
@@ -129,12 +146,15 @@ impl Events {
                 }
                 Input { key: Key::Esc, .. } => {
                     app.current_screen = Screen::Main;
+                    app.active_widget = Some(ActiveWidget::Editor);
                 }
                 Input {
                     key: Key::Enter, ..
-                } => {
-                    Self::input_action(app);
-                }
+                } => match app.user_input.get_action() {
+                    InputAction::NewNoteTitle => Self::input_new_note_title(app),
+                    InputAction::NewNote => Self::input_new_note(app, false).await?,
+                    _ => {}
+                },
                 Input {
                     key: Key::Backspace,
                     ..
@@ -158,23 +178,68 @@ impl Events {
                 }
                 Input { key: Key::Esc, .. } => {
                     app.current_screen = Screen::Main;
+                    app.active_widget = Some(ActiveWidget::Editor);
                 }
                 Input {
                     key: Key::Enter, ..
                 } => {
-                    Self::input_action(app);
+                    if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
+                        Self::input_new_note(app, true).await?;
+                    } else if app.active_widget == Some(ActiveWidget::NoteList) {
+                        let selected = app.note_list.selected;
+                        let nid = &app.note_list.note_identifiers[selected];
+                        Self::link_note(app, nid.id);
+                    }
+                }
+                Input {
+                    key: Key::Tab,
+                    shift: false,
+                    alt: false,
+                    ..
+                } => {
+                    if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
+                        app.user_input.text.input(input);
+                    } else if app.active_widget == Some(ActiveWidget::NoteList) {
+                        app.note_list.next();
+                    }
+                }
+                Input {
+                    key: Key::Tab,
+                    shift: true,
+                    alt: false,
+                    ..
+                } => {
+                    if app.active_widget == Some(ActiveWidget::NoteList) {
+                        app.note_list.prev();
+                    }
+                }
+                Input {
+                    key: Key::Tab,
+                    shift: false,
+                    alt: true,
+                    ..
+                } => {
+                    if app.active_widget == Some(ActiveWidget::NoteList) {
+                        app.set_active_widget(ActiveWidget::NoteTitleInput);
+                    } else if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
+                        app.set_active_widget(ActiveWidget::NoteList);
+                    }
                 }
                 Input {
                     key: Key::Backspace,
                     ..
                 } => {
-                    app.user_input.text.delete_char();
-                    if app.user_input.get_state() == InputState::Error {
-                        app.user_input.set_state(InputState::Active);
+                    if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
+                        app.user_input.text.delete_char();
+                        if app.user_input.get_state() == InputState::Error {
+                            app.user_input.set_state(InputState::Active);
+                        }
                     }
                 }
                 input => {
-                    app.user_input.text.input(input);
+                    if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
+                        app.user_input.text.input(input);
+                    }
                 }
             },
             Screen::LoadNote => match input {
@@ -230,6 +295,7 @@ impl Events {
                     ..
                 } => {
                     app.current_screen = Screen::Main;
+                    app.active_widget = Some(ActiveWidget::Editor);
                 }
                 _ => {}
             },
@@ -237,29 +303,22 @@ impl Events {
         Ok(())
     }
 
-    async fn save_note(app: &mut App<'_>) -> Result<()> {
-        let has_links = match app.editor.body.links.len() {
-            0 => false,
-            _ => true,
-        };
-
-        let (save_note_result, updated) = match app.editor.note_id {
-            Some(id) => {
-                let body = app.editor.body.lines().join("\n");
-
-                (
-                    DbMac::update_note(&app.db, app.editor.title.clone(), body, has_links, id)
-                        .await,
-                    true,
-                )
-            }
-            None => {
-                let body = app.editor.body.lines().join("\n");
-                (
-                    DbMac::save_note(&app.db, body, app.editor.title.clone(), has_links).await,
-                    false,
-                )
-            }
+    async fn save_note(
+        app: &mut App<'_>,
+        title: String,
+        body: String,
+        has_links: bool,
+        note_id: Option<i64>,
+    ) -> Result<()> {
+        let (save_note_result, updated) = match note_id {
+            Some(id) => (
+                DbMac::update_note(&app.db, title.clone(), body, has_links, id).await,
+                true,
+            ),
+            None => (
+                DbMac::save_note(&app.db, title.clone(), body, has_links).await,
+                false,
+            ),
         };
 
         match save_note_result {
@@ -267,7 +326,7 @@ impl Events {
                 if updated {
                     let new_nid = NoteIdentifier {
                         id: parent_id,
-                        title: app.editor.title.clone(),
+                        title,
                     };
 
                     // Replaces prev note title with new one in the load note screen
@@ -275,7 +334,7 @@ impl Events {
                 } else {
                     let new_nid = NoteIdentifier {
                         id: parent_id,
-                        title: app.editor.title.clone(),
+                        title,
                     };
 
                     // Makes the note available in the load note screen
@@ -429,48 +488,121 @@ impl Events {
         }
     }
 
-    fn input_action(app: &mut App) {
-        app.user_input.set_state(InputState::Submit);
+    async fn input_new_note<'a>(app: &mut App<'a>, linked: bool) -> Result<()> {
+        let linked_title = app.user_input.text.lines()[0].clone();
 
-        match app.user_input.get_action() {
-            InputAction::NewNoteTitle => {
-                let title = app.user_input.text.lines()[0].clone();
+        match app
+            .note_list
+            .note_identifiers
+            .iter()
+            .any(|nid| nid.title == linked_title)
+        {
+            // If any pre-exisiting notes have that title, warn user with input error state
+            true => {
+                app.user_input.set_state(InputState::Error);
+                Ok(())
+            }
+            // If no pre-exisiting notes have that title, create and save new note with that title
+            false => {
+                let linked_body = "".to_string();
+                let result =
+                    DbMac::save_note(&app.db, linked_title.clone(), linked_body.clone(), false)
+                        .await;
 
-                match app
-                    .note_list
-                    .note_identifiers
-                    .iter()
-                    .any(|nid| nid.title == title)
-                {
-                    true => {
-                        app.user_input.set_state(InputState::Error);
+                match result {
+                    Ok(id) => {
+                        let new_nid = NoteIdentifier {
+                            id,
+                            title: linked_title.clone(),
+                        };
+
+                        if linked {
+                            // link the new note to the parent
+                            Self::link_note(app, new_nid.id);
+
+                            // Save parent note to preserve link in textarea
+                            let has_links = true;
+                            let parent_title = app.editor.title.clone();
+                            let parent_body = app.editor.body.lines().join("\n");
+                            let note_id = app.editor.note_id;
+                            let parent_result =
+                                Self::save_note(app, parent_title, parent_body, has_links, note_id)
+                                    .await;
+
+                            match parent_result {
+                                Ok(_) => {
+                                    // If parent note saved correctly, switch editor to linked) note
+                                    app.editor = Editor::new(
+                                        linked_title,
+                                        vec![linked_body],
+                                        vec![],
+                                        Some(id),
+                                    );
+                                    app.note_list.update(new_nid);
+                                    app.current_screen = Screen::Main;
+                                    app.active_widget = Some(ActiveWidget::Editor);
+                                    return Ok(());
+                                }
+                                Err(err) => return Err(err),
+                            }
+                        } else {
+                            // if not linked to another note, simply switch to editor with new note
+                            app.editor =
+                                Editor::new(linked_title, vec![linked_body], vec![], Some(id));
+                            app.note_list.update(new_nid);
+                            app.current_screen = Screen::Main;
+                            app.active_widget = Some(ActiveWidget::Editor);
+                            Ok(())
+                        }
                     }
-                    false => {
-                        app.editor.set_title(title);
-                        app.current_screen = Screen::Main;
-                    }
+                    Err(err) => Err(err),
                 }
             }
-            InputAction::NewNote => {
-                let title = app.user_input.text.lines()[0].clone();
+        }
+    }
 
-                match app
-                    .note_list
-                    .note_identifiers
-                    .iter()
-                    .any(|nid| nid.title == title)
-                {
-                    true => {
-                        app.user_input.set_state(InputState::Error);
-                    }
-                    false => {
-                        let body = vec!["".to_string()];
-                        let note_id = None;
-                        app.editor = Editor::new(title, body, vec![], note_id);
+    fn link_note(app: &mut App, linked_id: i64) {
+        let textarea_link = app
+            .pending_link
+            .expect("Should be a pending link if we reached this far");
 
-                        app.current_screen = Screen::Main;
-                    }
-                }
+        let parent_nid = app
+            .note_list
+            .note_identifiers
+            .iter()
+            .find(|nid| nid.title == app.editor.title)
+            .expect("Parent note should already be saved and added to app.note_list");
+
+        let new_link = Link {
+            id: parent_nid.id,
+            text_id: textarea_link.id as i64,
+            linked_id,
+            row: textarea_link.row,
+            start_col: textarea_link.start_col,
+            end_col: textarea_link.end_col,
+        };
+
+        app.editor.links.push(new_link);
+        app.current_screen = Screen::Main;
+        app.active_widget = Some(ActiveWidget::Editor);
+    }
+
+    fn input_new_note_title(app: &mut App) {
+        let title = app.user_input.text.lines()[0].clone();
+
+        match app
+            .note_list
+            .note_identifiers
+            .iter()
+            .any(|nid| nid.title == title)
+        {
+            true => {
+                app.user_input.set_state(InputState::Error);
+            }
+            false => {
+                app.editor.set_title(title);
+                app.current_screen = Screen::Main;
+                app.active_widget = Some(ActiveWidget::Editor);
             }
         }
     }
@@ -479,9 +611,11 @@ impl Events {
         match app.sidebar {
             SidebarState::Open(_) => {
                 app.sidebar = SidebarState::Hidden(0);
+                app.active_widget = Some(ActiveWidget::Sidebar);
             }
             SidebarState::Hidden(_) => {
                 app.sidebar = SidebarState::Open(app.sidebar_size);
+                app.active_widget = Some(ActiveWidget::Editor);
             }
         }
     }
