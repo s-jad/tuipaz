@@ -65,11 +65,11 @@ impl Widget for UserInput<'_> {
     where
         Self: Sized,
     {
-        let (title_clr, fg_clr) = match self.state {
-            InputState::Active => (Color::Yellow, Color::default()),
-            InputState::Submit => (Color::Yellow, Color::Red),
-            InputState::Inactive => (Color::Blue, Color::Blue),
-            InputState::Error => (Color::Red, Color::default()),
+        let (title_clr, fg_clr, border_style) = match self.state {
+            InputState::Active => (Color::Yellow, Color::default(), Style::default().bold()),
+            InputState::Submit => (Color::Yellow, Color::Red, Style::default().bold()),
+            InputState::Inactive => (Color::Gray, Color::Gray, Style::default().dim()),
+            InputState::Error => (Color::Red, Color::Red, Style::default().bold()),
         };
 
         let (title_span, input_hint) = match (self.action, self.state) {
@@ -100,7 +100,8 @@ impl Widget for UserInput<'_> {
             .title_alignment(Alignment::Left)
             .title_bottom(Line::from(vec![input_hint]))
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded);
+            .border_type(BorderType::Rounded)
+            .border_style(border_style);
 
         self.text.set_block(input_block);
         self.text.set_style(Style::default().fg(fg_clr));
