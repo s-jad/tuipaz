@@ -1,8 +1,6 @@
 use color_eyre::eyre::{eyre, Result};
 use serde::{Deserialize, Serialize};
-use sqlx::{query, QueryBuilder, SqlitePool};
-
-use crate::tui::editor::Link;
+use sqlx::{QueryBuilder, SqlitePool};
 
 #[derive(
     sqlx::
