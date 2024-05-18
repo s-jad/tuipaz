@@ -11,7 +11,7 @@ use super::{
     editor::Editor,
     events::Events,
     inputs::{InputAction, InputState, UserInput},
-    note_list::{NoteList, NoteListAction},
+    note_list::{NoteList, NoteListAction, NoteListState},
     ui::ui,
     user_messages::UserMessage,
     utils::Tui,
@@ -74,7 +74,11 @@ impl<'a> App<'a> {
             _ => ButtonState::Inactive,
         };
 
-        let note_list = NoteList::new(note_identifiers, NoteListAction::LoadNote);
+        let note_list = NoteList::new(
+            note_identifiers,
+            NoteListAction::LoadNote,
+            NoteListState::Active,
+        );
 
         Self {
             state: AppState::default(),
@@ -112,6 +116,17 @@ impl<'a> App<'a> {
     }
 
     pub(crate) fn set_active_widget(&mut self, active: ActiveWidget) {
+        match active {
+            ActiveWidget::NoteList => {
+                self.user_input.set_state(InputState::Inactive);
+                self.note_list.set_state(NoteListState::Active);
+            }
+            ActiveWidget::NoteTitleInput => {
+                self.user_input.set_state(InputState::Active);
+                self.note_list.set_state(NoteListState::Inactive);
+            }
+            _ => {}
+        }
         self.active_widget = Some(active);
     }
 }
