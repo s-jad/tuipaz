@@ -132,6 +132,24 @@ impl Events {
                         app.active_widget = Some(ActiveWidget::NoteTitleInput);
                     }
                 }
+                Input {
+                    key: Key::Enter, ..
+                } => match app.editor.body.in_link(app.editor.body.cursor()) {
+                    Some(ta_id) => {
+                        let linked_note_id = app
+                            .editor
+                            .links
+                            .iter()
+                            .find(|link| link.text_id == ta_id as i64)
+                            .expect("Link should be set up already")
+                            .linked_id;
+
+                        Self::load_note(app, linked_note_id as i64).await?;
+                    }
+                    None => {
+                        app.editor.body.input(input);
+                    }
+                },
                 input => {
                     app.editor.handle_input(input);
                 }
@@ -273,7 +291,9 @@ impl Events {
                 Input {
                     key: Key::Enter, ..
                 } => {
-                    Self::load_note(app).await?;
+                    let note_idx = app.note_list.selected;
+                    let id = app.note_list.note_identifiers[note_idx].id;
+                    Self::load_note(app, id).await?;
                 }
                 _ => {}
             },
@@ -396,10 +416,7 @@ impl Events {
         }
     }
 
-    async fn load_note(app: &mut App<'_>) -> Result<()> {
-        let note_idx = app.note_list.selected;
-        let id = app.note_list.note_identifiers[note_idx].id;
-
+    async fn load_note(app: &mut App<'_>, id: i64) -> Result<()> {
         let result = DbMac::load_note(&app.db, id).await;
 
         match result {
