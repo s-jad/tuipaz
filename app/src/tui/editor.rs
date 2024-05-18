@@ -172,25 +172,12 @@ impl<'a> Editor<'a> {
         self.title = title;
     }
 
-    pub(crate) fn follow_link(&mut self) {}
-
     pub(crate) fn handle_input(&mut self, input: Input) {
         match self.mode {
             EditorMode::Insert => match input {
                 Input { key: Key::Esc, .. } => {
                     self.set_mode(EditorMode::Normal);
                 }
-                Input {
-                    key: Key::Enter, ..
-                } => match self.body.in_link(self.body.cursor()) {
-                    Some(_) => self.follow_link(),
-                    None => {
-                        self.body.input(Input {
-                            key: Key::Enter,
-                            ..Default::default()
-                        });
-                    }
-                },
                 input => {
                     self.body.input(input);
                 }
