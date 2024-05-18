@@ -9,6 +9,12 @@ use ratatui::{
 use crate::db::db_mac::NoteIdentifier;
 
 #[derive(Debug, Clone)]
+pub(crate) enum NoteListState {
+    Active,
+    Inactive,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) enum NoteListAction {
     LoadNote,
     LinkNote,
@@ -19,16 +25,22 @@ pub(crate) struct NoteList {
     pub(crate) selected: usize,
     pub(crate) note_identifiers: Vec<NoteIdentifier>,
     pub(crate) action: NoteListAction,
+    pub(crate) state: NoteListState,
 }
 
 impl NoteList {
-    pub(crate) fn new(note_identifiers: Vec<NoteIdentifier>, action: NoteListAction) -> Self {
+    pub(crate) fn new(
+        note_identifiers: Vec<NoteIdentifier>,
+        action: NoteListAction,
+        state: NoteListState,
+    ) -> Self {
         let selected = 0;
 
         Self {
             selected,
             note_identifiers,
             action,
+            state,
         }
     }
 
@@ -62,6 +74,10 @@ impl NoteList {
             .title = replace_nid.title;
     }
 
+    pub(crate) fn set_state(&mut self, new_state: NoteListState) {
+        self.state = new_state;
+    }
+
     pub(crate) fn set_action(&mut self, new_action: NoteListAction) {
         self.action = new_action;
     }
@@ -83,15 +99,29 @@ impl Widget for NoteList {
             ),
         };
 
+        let (border_style, title_style, list_info_style) = match self.state {
+            NoteListState::Active => (
+                Style::default().bold(),
+                Style::default().bold().fg(Color::Yellow),
+                Style::default().bold(),
+            ),
+            NoteListState::Inactive => (
+                Style::default().dim(),
+                Style::default().dim().fg(Color::Gray),
+                Style::default().dim(),
+            ),
+        };
+
         let list_info = Line::styled(list_info_text, Style::default().fg(Color::Red));
 
-        let title = Span::styled(title_text, Style::default().bold().fg(Color::Yellow));
+        let title = Span::styled(title_text, title_style);
 
         let load_note_block = Block::default()
             .title(title)
             .title_bottom(list_info)
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
+            .border_style(border_style)
             .padding(Padding::new(1, 1, 1, 1))
             .style(Style::default());
 
