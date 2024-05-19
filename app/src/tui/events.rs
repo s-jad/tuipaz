@@ -119,12 +119,16 @@ impl Events {
                     ..
                 } => {
                     app.editor.handle_input(input);
-                    let num_text_links = app.editor.body.links.len();
-                    let num_editor_links = app.editor.links.len();
 
-                    // If there is a link in the textarea that the editor doesnt have
-                    if num_text_links != num_editor_links {
-                        app.pending_link = Some(app.editor.body.links[num_text_links - 1]);
+                    // If there is a new link in the textarea
+                    if app.editor.body.new_link {
+                        app.pending_link = Some(
+                            *app.editor
+                                .body
+                                .links
+                                .last()
+                                .expect("Link should be present"),
+                        );
 
                         // Set the user_input widget to create a new linked note
                         app.user_input.set_action(InputAction::NewLinkedNote);
@@ -135,13 +139,13 @@ impl Events {
                 Input {
                     key: Key::Enter, ..
                 } => match app.editor.body.in_link(app.editor.body.cursor()) {
-                    Some(ta_id) => {
+                    Some((_, link_id)) => {
                         let linked_note_id = app
                             .editor
                             .links
                             .iter()
-                            .find(|link| link.text_id == ta_id as i64)
-                            .expect("Link should be set up already")
+                            .find(|link| link.text_id == link_id as i64)
+                            .expect("Link should be set up")
                             .linked_id;
 
                         Self::load_note(app, linked_note_id as i64).await?;
@@ -602,6 +606,7 @@ impl Events {
         app.editor.links.push(new_link);
         app.current_screen = Screen::Main;
         app.active_widget = Some(ActiveWidget::Editor);
+        app.editor.body.new_link = false;
     }
 
     fn input_new_note_title(app: &mut App) {
