@@ -10,6 +10,19 @@ use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea};
 use crate::db::db_mac::DbNoteLink;
 
 const DELETE_COMMANDS: [char; 7] = ['d', 'w', 'b', 'j', 'k', 'l', 'h'];
+const DELETE_KEYS: [Key; 10] = [
+    Key::Char('d'),
+    Key::Char('w'),
+    Key::Char('b'),
+    Key::Char('j'),
+    Key::Char('k'),
+    Key::Char('l'),
+    Key::Char('h'),
+    Key::Char('x'),
+    Key::Delete,
+    Key::Backspace,
+];
+
 const YANK_COMMANDS: [char; 6] = ['w', 'b', 'j', 'k', 'l', 'h'];
 const GOTO_COMMANDS: [char; 1] = ['g'];
 
@@ -173,6 +186,8 @@ impl<'a> Editor<'a> {
     }
 
     pub(crate) fn handle_input(&mut self, input: Input) {
+        let key = &input.key.clone();
+
         match self.mode {
             EditorMode::Insert => match input {
                 Input { key: Key::Esc, .. } => {
@@ -661,6 +676,23 @@ impl<'a> Editor<'a> {
                 }
                 _ => {}
             },
+        }
+
+        self.check_link_deletion(key);
+    }
+
+    fn check_link_deletion(&mut self, key: &Key) {
+        let to_delete = self.body.deleted_link_ids.len();
+        if DELETE_KEYS.contains(key) && to_delete > 0 {
+            for _ in 0..to_delete {
+                let idx = self
+                    .body
+                    .deleted_link_ids
+                    .pop()
+                    .expect("Link to delete should exist")
+                    .0;
+                self.links.remove(idx);
+            }
         }
     }
 
