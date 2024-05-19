@@ -163,7 +163,12 @@ impl DbMac {
     ) -> Result<Vec<DbNoteLink>> {
         let result = sqlx::query_as!(
             DbNoteLink,
-            "SELECT parent_note_id, textarea_id, textarea_row, start_col, end_col, linked_note_id FROM links WHERE parent_note_id=?",
+            "SELECT
+                parent_note_id, textarea_id, textarea_row, start_col, end_col, linked_note_id 
+            FROM 
+                links 
+            WHERE 
+                parent_note_id=?",
             parent_note_id
         )
         .fetch_all(db)
