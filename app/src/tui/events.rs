@@ -9,6 +9,7 @@ use super::{
     buttons::{ButtonAction, ButtonState},
     editor::{Editor, Link},
     inputs::{InputAction, InputState, UserInput},
+    note_list::{self, NoteListState},
     user_messages::{MessageType, UserMessage},
 };
 
@@ -134,6 +135,8 @@ impl Events {
                         app.user_input.set_action(InputAction::NewLinkedNote);
                         app.current_screen = Screen::NewLinkedNote;
                         app.active_widget = Some(ActiveWidget::NoteTitleInput);
+                        app.user_input.set_state(InputState::Active);
+                        app.note_list.set_state(NoteListState::Inactive);
                     }
                 }
                 Input {
@@ -213,34 +216,17 @@ impl Events {
                         Self::link_note(app, nid.id);
                     }
                 }
-                Input {
-                    key: Key::Tab,
-                    shift: false,
-                    alt: false,
-                    ..
-                } => {
-                    if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
-                        app.user_input.text.input(input);
-                    } else if app.active_widget == Some(ActiveWidget::NoteList) {
+                Input { key: Key::Down, .. } => {
+                    if app.active_widget == Some(ActiveWidget::NoteList) {
                         app.note_list.next();
                     }
                 }
-                Input {
-                    key: Key::Tab,
-                    shift: true,
-                    alt: false,
-                    ..
-                } => {
+                Input { key: Key::Up, .. } => {
                     if app.active_widget == Some(ActiveWidget::NoteList) {
                         app.note_list.prev();
                     }
                 }
-                Input {
-                    key: Key::Tab,
-                    shift: false,
-                    alt: true,
-                    ..
-                } => {
+                Input { key: Key::Tab, .. } => {
                     if app.active_widget == Some(ActiveWidget::NoteList) {
                         app.set_active_widget(ActiveWidget::NoteTitleInput);
                     } else if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
@@ -268,24 +254,14 @@ impl Events {
                 Input { key: Key::Esc, .. } => {
                     app.current_screen = Screen::Main;
                 }
-                Input {
-                    key: Key::Tab,
-                    shift: false,
-                    ..
-                }
-                | Input { key: Key::Down, .. }
+                Input { key: Key::Down, .. }
                 | Input {
                     key: Key::Char('j'),
                     ..
                 } => {
                     app.note_list.next();
                 }
-                Input {
-                    key: Key::Tab,
-                    shift: true,
-                    ..
-                }
-                | Input { key: Key::Up, .. }
+                Input { key: Key::Up, .. }
                 | Input {
                     key: Key::Char('k'),
                     ..
