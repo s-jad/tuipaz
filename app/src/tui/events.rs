@@ -9,7 +9,7 @@ use super::{
     buttons::{ButtonAction, ButtonState},
     editor::{Editor, Link},
     inputs::{InputAction, InputState, UserInput},
-    note_list::{self, NoteListState},
+    note_list::NoteListState,
     user_messages::{MessageType, UserMessage},
 };
 
@@ -127,8 +127,8 @@ impl Events {
                             *app.editor
                                 .body
                                 .links
-                                .last()
-                                .expect("Link should be present"),
+                                .get(&(app.editor.body.next_link_id - 1))
+                                .expect("Link should be present")
                         );
 
                         // Set the user_input widget to create a new linked note
