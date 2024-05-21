@@ -91,11 +91,11 @@ impl Widget for NoteList {
         let (title_text, list_info_text) = match self.action {
             NoteListAction::LoadNote => (
                 " Load Note ",
-                " <Enter> Load Note | <Tab/ArrowUp> Next | <Shift-Tab/ArrowDown> Prev ",
+                " <Enter> Load Note | <ArrowUp/j> Next | <ArrowDown/k> Prev ",
             ),
             NoteListAction::LinkNote => (
                 " Link Note ",
-                " <Enter> Link Note | <Tab/ArrowUp> Next | <Shift-Tab/ArrowDown> Prev ",
+                " <Enter> Link Note | <ArrowUp/j> Next | <ArrowDown/k> Prev ",
             ),
         };
 
@@ -107,12 +107,12 @@ impl Widget for NoteList {
             ),
             NoteListState::Inactive => (
                 Style::default().dim(),
-                Style::default().dim().fg(Color::Gray),
+                Style::default().dim(),
                 Style::default().dim(),
             ),
         };
 
-        let list_info = Line::styled(list_info_text, Style::default().fg(Color::Red));
+        let list_info = Line::styled(list_info_text, list_info_style);
 
         let title = Span::styled(title_text, title_style);
 
