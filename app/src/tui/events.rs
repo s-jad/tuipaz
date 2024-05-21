@@ -92,7 +92,7 @@ impl Events {
                     ..
                 } => {
                     app.current_screen = Screen::NewNote;
-                    app.user_input.set_action(InputAction::NewNote);
+                    app.user_input.set_action(InputAction::Note);
                     app.active_widget = Some(ActiveWidget::NoteTitleInput);
                 }
                 Input {
@@ -101,7 +101,7 @@ impl Events {
                     ..
                 } => {
                     app.current_screen = Screen::NewNote;
-                    app.user_input.set_action(InputAction::NewNoteTitle);
+                    app.user_input.set_action(InputAction::NoteTitle);
                     app.active_widget = Some(ActiveWidget::NoteTitleInput);
                 }
                 Input {
@@ -132,7 +132,7 @@ impl Events {
                         );
 
                         // Set the user_input widget to create a new linked note
-                        app.user_input.set_action(InputAction::NewLinkedNote);
+                        app.user_input.set_action(InputAction::LinkedNote);
                         app.current_screen = Screen::NewLinkedNote;
                         app.active_widget = Some(ActiveWidget::NoteTitleInput);
                         app.user_input.set_state(InputState::Active);
@@ -176,8 +176,8 @@ impl Events {
                 Input {
                     key: Key::Enter, ..
                 } => match app.user_input.get_action() {
-                    InputAction::NewNoteTitle => Self::input_new_note_title(app),
-                    InputAction::NewNote => Self::input_new_note(app, false).await?,
+                    InputAction::NoteTitle => Self::input_new_note_title(app),
+                    InputAction::Note => Self::input_new_note(app, false).await?,
                     _ => {}
                 },
                 Input {
@@ -476,7 +476,7 @@ impl Events {
                 app.current_screen = Screen::Main;
             }
             ButtonAction::RenderNewNoteScreen => {
-                app.user_input = UserInput::new(InputState::Active, InputAction::NewNote);
+                app.user_input = UserInput::new(InputState::Active, InputAction::Note);
                 app.current_screen = Screen::NewNote;
             }
             ButtonAction::RenderLoadNoteScreen => {

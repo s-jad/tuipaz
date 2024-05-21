@@ -106,7 +106,7 @@ impl<'a> App<'a> {
                 ),
             ]),
             btn_idx: 0,
-            user_input: UserInput::new(InputState::Active, InputAction::NewNote),
+            user_input: UserInput::new(InputState::Active, InputAction::Note),
             user_msg: UserMessage::welcome(),
             sidebar: SidebarState::Open(20),
             sidebar_size: 20,
