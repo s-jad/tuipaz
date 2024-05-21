@@ -3,7 +3,7 @@ use ratatui::{
     prelude::{Buffer, Rect},
     style::{Color, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, BorderType, Borders, Widget},
+    widgets::{Block, BorderType, Padding, Borders, Widget},
 };
 use tuipaz_textarea::TextArea;
 
@@ -17,9 +17,9 @@ pub(crate) enum InputState {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum InputAction {
-    NewNoteTitle,
-    NewNote,
-    NewLinkedNote,
+    NoteTitle,
+    Note,
+    LinkedNote,
 }
 
 #[derive(Debug, Clone)]
@@ -65,35 +65,37 @@ impl Widget for UserInput<'_> {
     where
         Self: Sized,
     {
-        let (title_clr, fg_clr, border_style) = match self.state {
-            InputState::Active => (Color::Yellow, Color::default(), Style::default().bold()),
-            InputState::Submit => (Color::Yellow, Color::Red, Style::default().bold()),
-            InputState::Inactive => (Color::Gray, Color::Gray, Style::default().dim()),
-            InputState::Error => (Color::Red, Color::Red, Style::default().bold()),
+        let (title_style, hint_style, text_style) = match self.state {
+            InputState::Active => (Style::default().bold().fg(Color::Yellow), Style::default().bold(), Style::default()),
+            InputState::Submit => (Style::default().bold().fg(Color::Blue), Style::default().bold(), Style::default()),
+            InputState::Inactive => (Style::default().bold().dim(), Style::default().bold().dim(), Style::default().dim()),
+            InputState::Error => (Style::default().bold().fg(Color::Red), Style::default().bold().fg(Color::Red), Style::default()),
         };
 
         let (title_span, input_hint) = match (self.action, self.state) {
             (
-                InputAction::NewNoteTitle | InputAction::NewNote | InputAction::NewLinkedNote,
+                InputAction::NoteTitle | InputAction::Note | InputAction::LinkedNote,
                 InputState::Error,
             ) => (
                 Span::styled(
                     format!(" Error: {:?} already exists ", self.text.lines()),
-                    Style::default().bold().fg(Color::Red),
+                    title_style,
                 ),
                 Span::styled(
                     " Please choose a different title ",
-                    Style::default().bold().fg(Color::Red),
+                    hint_style,
                 ),
             ),
-            (InputAction::NewNoteTitle | InputAction::NewNote | InputAction::NewLinkedNote, _) => (
-                Span::styled(" New Note ", Style::default().bold().fg(title_clr)),
+            (InputAction::NoteTitle | InputAction::Note | InputAction::LinkedNote, _) => (
+                Span::styled(" New Note ", title_style),
                 Span::styled(
                     " <Esc> return to prev screen <Enter> submit title ",
-                    Style::default().bold().fg(fg_clr),
+                    hint_style,
                 ),
             ),
         };
+        
+        let border_style = text_style.bold();
 
         let input_block = Block::new()
             .title(Line::from(vec![title_span]))
@@ -101,10 +103,11 @@ impl Widget for UserInput<'_> {
             .title_bottom(Line::from(vec![input_hint]))
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
-            .border_style(border_style);
+            .border_style(border_style)
+            .padding(Padding { left: 1, right: 1, top: 1, bottom: 1 });
 
         self.text.set_block(input_block);
-        self.text.set_style(Style::default().fg(fg_clr));
+        self.text.set_style(text_style);
 
         self.text.widget().render(area, buf);
     }
