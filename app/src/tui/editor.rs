@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ratatui::{
     layout::Alignment,
     style::{Color, Modifier, Style, Stylize},
@@ -114,8 +116,8 @@ impl<'a> Editor<'a> {
     ) -> Self {
         let ta_links = links
             .iter()
-            .map(|link| link.to_textarea_link())
-            .collect::<Vec<TextAreaLink>>();
+            .map(|link| (link.text_id as usize, link.to_textarea_link()))
+            .collect::<HashMap<usize,TextAreaLink>>();
 
         let mut body = TextArea::new(body, ta_links);
         body.set_cursor_line_style(Style::default());
