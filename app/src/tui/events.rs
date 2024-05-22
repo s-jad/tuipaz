@@ -5,11 +5,10 @@ use tuipaz_textarea::{Input, Key};
 use crate::db::db_mac::{DbMac, DbNoteLink, NoteIdentifier};
 
 use super::{
-    app::{ActiveWidget, App, AppState, Screen, SidebarState},
-    buttons::{ButtonAction, ButtonState},
+    app::{ActiveWidget, App, AppState, Screen, SidebarState, ComponentState},
+    buttons::ButtonAction,
     editor::{Editor, Link},
-    inputs::{InputAction, InputState, UserInput},
-    note_list::NoteListState,
+    inputs::{InputAction, UserInput},
     user_messages::{MessageType, UserMessage},
 };
 
@@ -48,9 +47,8 @@ impl Events {
                         .expect("btn should exist")
                         .get_state();
 
-                    match btn_state {
-                        ButtonState::Active => Self::btn_action(app),
-                        _ => {}
+                    if btn_state == ComponentState::Active {
+                        Self::btn_action(app);
                     }
                 }
                 _ => {}
@@ -135,8 +133,8 @@ impl Events {
                         app.user_input.set_action(InputAction::LinkedNote);
                         app.current_screen = Screen::NewLinkedNote;
                         app.active_widget = Some(ActiveWidget::NoteTitleInput);
-                        app.user_input.set_state(InputState::Active);
-                        app.note_list.set_state(NoteListState::Inactive);
+                        app.user_input.set_state(ComponentState::Active);
+                        app.note_list.set_state(ComponentState::Inactive);
                     }
                 }
                 Input {
@@ -185,8 +183,8 @@ impl Events {
                     ..
                 } => {
                     app.user_input.text.delete_char();
-                    if app.user_input.get_state() == InputState::Error {
-                        app.user_input.set_state(InputState::Active);
+                    if app.user_input.get_state() == ComponentState::Error {
+                        app.user_input.set_state(ComponentState::Active);
                     }
                 }
                 input => {
@@ -239,8 +237,8 @@ impl Events {
                 } => {
                     if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
                         app.user_input.text.delete_char();
-                        if app.user_input.get_state() == InputState::Error {
-                            app.user_input.set_state(InputState::Active);
+                        if app.user_input.get_state() == ComponentState::Error {
+                            app.user_input.set_state(ComponentState::Active);
                         }
                     }
                 }
@@ -446,8 +444,8 @@ impl Events {
             .expect("Selected btn should exist");
 
         match inactive_btn.get_state() {
-            ButtonState::Unavailable => {}
-            _ => inactive_btn.set_state(ButtonState::Inactive),
+            ComponentState::Unavailable => {}
+            _ => inactive_btn.set_state(ComponentState::Inactive),
         }
 
         app.btn_idx = (app.btn_idx + 1) % (app.btns.len()) as u8;
@@ -458,8 +456,8 @@ impl Events {
             .expect("Selected btn should exist");
 
         match active_btn.get_state() {
-            ButtonState::Unavailable => {}
-            _ => active_btn.set_state(ButtonState::Active),
+            ComponentState::Unavailable => {}
+            _ => active_btn.set_state(ComponentState::Active),
         }
     }
 
@@ -469,14 +467,12 @@ impl Events {
             .get_mut(&app.btn_idx)
             .expect("Selected btn should exist");
 
-        active_btn.set_state(ButtonState::Clicked);
-
         match active_btn.get_action() {
             ButtonAction::RenderMainScreen => {
                 app.current_screen = Screen::Main;
             }
             ButtonAction::RenderNewNoteScreen => {
-                app.user_input = UserInput::new(InputState::Active, InputAction::Note);
+                app.user_input = UserInput::new(ComponentState::Active, InputAction::Note);
                 app.current_screen = Screen::NewNote;
             }
             ButtonAction::RenderLoadNoteScreen => {
@@ -496,7 +492,7 @@ impl Events {
         {
             // If any pre-exisiting notes have that title, warn user with input error state
             true => {
-                app.user_input.set_state(InputState::Error);
+                app.user_input.set_state(ComponentState::Error);
                 Ok(())
             }
             // If no pre-exisiting notes have that title, create and save new note with that title
@@ -595,7 +591,7 @@ impl Events {
             .any(|nid| nid.title == title)
         {
             true => {
-                app.user_input.set_state(InputState::Error);
+                app.user_input.set_state(ComponentState::Error);
             }
             false => {
                 app.editor.set_title(title);
