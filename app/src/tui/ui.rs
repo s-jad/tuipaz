@@ -61,18 +61,11 @@ fn render_welcome_screen(app: &mut App, frame: &mut Frame) {
         .constraints(two_btn_split)
         .split(layout[1]);
 
-    let new_note_btn = app
-        .btns
-        .get_mut(&0)
-        .expect("New note btn should be present");
-    new_note_btn.clone().render(btn_layout[1], buf);
+    let new_note_btn = app.btns[0].clone();
+    new_note_btn.render(btn_layout[1], buf);
 
-    let load_note_btn = app
-        .btns
-        .get_mut(&1)
-        .expect("Load note btn should be present");
-
-    load_note_btn.clone().render(btn_layout[3], buf);
+    let load_note_btn = app.btns[1].clone();
+    load_note_btn.render(btn_layout[3], buf);
 }
 
 fn render_main_screen(app: &mut App, frame: &mut Frame) {
