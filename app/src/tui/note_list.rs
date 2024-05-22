@@ -8,11 +8,7 @@ use ratatui::{
 
 use crate::db::db_mac::NoteIdentifier;
 
-#[derive(Debug, Clone)]
-pub(crate) enum NoteListState {
-    Active,
-    Inactive,
-}
+use super::app::ComponentState;
 
 #[derive(Debug, Clone)]
 pub(crate) enum NoteListAction {
@@ -25,14 +21,14 @@ pub(crate) struct NoteList {
     pub(crate) selected: usize,
     pub(crate) note_identifiers: Vec<NoteIdentifier>,
     pub(crate) action: NoteListAction,
-    pub(crate) state: NoteListState,
+    pub(crate) state: ComponentState,
 }
 
 impl NoteList {
     pub(crate) fn new(
         note_identifiers: Vec<NoteIdentifier>,
         action: NoteListAction,
-        state: NoteListState,
+        state: ComponentState,
     ) -> Self {
         let selected = 0;
 
@@ -74,7 +70,7 @@ impl NoteList {
             .title = replace_nid.title;
     }
 
-    pub(crate) fn set_state(&mut self, new_state: NoteListState) {
+    pub(crate) fn set_state(&mut self, new_state: ComponentState) {
         self.state = new_state;
     }
 
@@ -100,15 +96,25 @@ impl Widget for NoteList {
         };
 
         let (border_style, title_style, list_info_style) = match self.state {
-            NoteListState::Active => (
+            ComponentState::Active => (
                 Style::default().bold(),
                 Style::default().bold().fg(Color::Yellow),
                 Style::default().bold(),
             ),
-            NoteListState::Inactive => (
+            ComponentState::Inactive => (
+                Style::default().bold().dim(),
+                Style::default().bold().dim(),
+                Style::default().bold().dim(),
+            ),
+            ComponentState::Unavailable => (
                 Style::default().dim(),
                 Style::default().dim(),
                 Style::default().dim(),
+            ),
+            ComponentState::Error => (
+                Style::default().bold(),
+                Style::default().bold().fg(Color::Red),
+                Style::default().bold().fg(Color::Red),
             ),
         };
 
