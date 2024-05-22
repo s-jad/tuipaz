@@ -7,11 +7,11 @@ use crate::db::db_mac::NoteIdentifier;
 use tuipaz_textarea::Link as TextAreaLink;
 
 use super::{
-    buttons::{Button, ButtonAction, ButtonState},
+    buttons::{Button, ButtonAction},
     editor::Editor,
     events::Events,
-    inputs::{InputAction, InputState, UserInput},
-    note_list::{NoteList, NoteListAction, NoteListState},
+    inputs::{InputAction, UserInput},
+    note_list::{NoteList, NoteListAction},
     ui::ui,
     user_messages::UserMessage,
     utils::Tui,
@@ -22,6 +22,14 @@ pub(crate) enum AppState {
     #[default]
     Running,
     Exit,
+}
+
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
+pub(crate) enum ComponentState {
+    Active,
+    Inactive,
+    Unavailable,
+    Error,
 }
 
 #[derive(PartialEq, Debug, Clone, Copy)]
@@ -70,14 +78,14 @@ pub(crate) struct App<'a> {
 impl<'a> App<'a> {
     pub fn new(db: Pool<Sqlite>, note_identifiers: Vec<NoteIdentifier>) -> Self {
         let load_btn_state = match note_identifiers.len() {
-            0 => ButtonState::Unavailable,
-            _ => ButtonState::Inactive,
+            0 => ComponentState::Unavailable,
+            _ => ComponentState::Inactive,
         };
 
         let note_list = NoteList::new(
             note_identifiers,
             NoteListAction::LoadNote,
-            NoteListState::Active,
+            ComponentState::Active,
         );
 
         Self {
@@ -92,7 +100,7 @@ impl<'a> App<'a> {
                     0,
                     Button::new(
                         "New".to_owned(),
-                        ButtonState::Active,
+                        ComponentState::Active,
                         ButtonAction::RenderNewNoteScreen,
                     ),
                 ),
@@ -106,7 +114,7 @@ impl<'a> App<'a> {
                 ),
             ]),
             btn_idx: 0,
-            user_input: UserInput::new(InputState::Active, InputAction::Note),
+            user_input: UserInput::new(ComponentState::Active, InputAction::Note),
             user_msg: UserMessage::welcome(),
             sidebar: SidebarState::Open(20),
             sidebar_size: 20,
@@ -118,12 +126,12 @@ impl<'a> App<'a> {
     pub(crate) fn set_active_widget(&mut self, active: ActiveWidget) {
         match active {
             ActiveWidget::NoteList => {
-                self.user_input.set_state(InputState::Inactive);
-                self.note_list.set_state(NoteListState::Active);
+                self.user_input.set_state(ComponentState::Inactive);
+                self.note_list.set_state(ComponentState::Active);
             }
             ActiveWidget::NoteTitleInput => {
-                self.user_input.set_state(InputState::Active);
-                self.note_list.set_state(NoteListState::Inactive);
+                self.user_input.set_state(ComponentState::Active);
+                self.note_list.set_state(ComponentState::Inactive);
             }
             _ => {}
         }
