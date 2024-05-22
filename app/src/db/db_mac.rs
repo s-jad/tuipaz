@@ -190,4 +190,23 @@ impl DbMac {
             Err(e) => Err(eyre!("Failed to load note identifiers: {:?}", e)),
         }
     }
+
+    pub(crate) async fn delete_link(db: &SqlitePool, parent_note_id: i64, textarea_id: i64) -> Result<()> {
+        let result = sqlx::query!("
+            DELETE FROM links 
+            WHERE 
+                parent_note_id=$1 
+            AND 
+                textarea_id=$2",
+            parent_note_id,
+            textarea_id
+        )
+        .execute(db)
+        .await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(eyre!("Failed to delete link: {:?}", e)),
+        }
+    }
 }
