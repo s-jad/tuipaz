@@ -429,6 +429,15 @@ impl Events {
         }
     }
 
+    async fn delete_link(app: &mut App<'_>, parent_note_id: i64, textarea_id: i64) -> Result<()> {
+        let result = DbMac::delete_link(&app.db, parent_note_id, textarea_id).await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(err) => Err(err),
+        }
+    }
+
     fn switch_btns(app: &mut App) {
         match app.current_btn().get_state() {
             ComponentState::Unavailable => {}
