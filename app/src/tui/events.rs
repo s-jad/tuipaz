@@ -41,11 +41,7 @@ impl Events {
                 Input {
                     key: Key::Enter, ..
                 } => {
-                    let btn_state = app
-                        .btns
-                        .get(&app.btn_idx)
-                        .expect("btn should exist")
-                        .get_state();
+                    let btn_state = app.btns[app.btn_idx].get_state();
 
                     if btn_state == ComponentState::Active {
                         Self::btn_action(app);
@@ -137,7 +133,7 @@ impl Events {
                 Input {
                     key: Key::Enter, ..
                 } => match app.editor.body.in_link(app.editor.body.cursor()) {
-                    Some((_, link_id)) => {
+                    Some(link_id) => {
                         let linked_note_id = app
                             .editor
                             .links
@@ -199,6 +195,8 @@ impl Events {
                 Input { key: Key::Esc, .. } => {
                     app.current_screen = Screen::Main;
                     app.active_widget = Some(ActiveWidget::Editor);
+                    app.editor.body.delete_link(app.editor.body.next_link_id - 1);
+                    
                 }
                 Input {
                     key: Key::Enter, ..
@@ -432,36 +430,21 @@ impl Events {
     }
 
     fn switch_btns(app: &mut App) {
-        let inactive_btn = app
-            .btns
-            .get_mut(&app.btn_idx)
-            .expect("Selected btn should exist");
-
-        match inactive_btn.get_state() {
+        match app.btns[app.btn_idx].get_state() {
             ComponentState::Unavailable => {}
-            _ => inactive_btn.set_state(ComponentState::Inactive),
+            _ => app.btns[app.btn_idx].set_state(ComponentState::Inactive),
         }
 
-        app.btn_idx = (app.btn_idx + 1) % (app.btns.len()) as u8;
+        app.btn_idx = (app.btn_idx + 1) % app.btns.len();
 
-        let active_btn = app
-            .btns
-            .get_mut(&app.btn_idx)
-            .expect("Selected btn should exist");
-
-        match active_btn.get_state() {
+        match app.btns[app.btn_idx].get_state() {
             ComponentState::Unavailable => {}
-            _ => active_btn.set_state(ComponentState::Active),
+            _ => app.btns[app.btn_idx].set_state(ComponentState::Active),
         }
     }
 
     fn btn_action(app: &mut App) {
-        let active_btn = app
-            .btns
-            .get_mut(&app.btn_idx)
-            .expect("Selected btn should exist");
-
-        match active_btn.get_action() {
+        match app.btns[app.btn_idx].get_action() {
             ButtonAction::RenderMainScreen => {
                 app.current_screen = Screen::Main;
             }
