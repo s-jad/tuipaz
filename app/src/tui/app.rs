@@ -129,6 +129,10 @@ impl<'a> App<'a> {
         }
         self.active_widget = Some(active);
     }
+
+    pub(crate) fn current_btn(&mut self) -> &mut Button {
+        &mut self.btns[self.btn_idx]
+    }
 }
 
 pub(crate) async fn run(app: &mut App<'_>, terminal: &mut Tui) -> Result<()> {
