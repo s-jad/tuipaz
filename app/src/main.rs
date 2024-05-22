@@ -14,10 +14,10 @@ async fn main() -> Result<()> {
     let mut term = tui::utils::init()?;
     let note_titles = DbMac::load_note_identifiers(&db).await?;
     let mut app = App::new(db, note_titles);
-    let res = run(&mut app, &mut term).await?;
+    run(&mut app, &mut term).await?;
     tui::utils::restore()?;
 
     println!("app final state:\n{:#?}", app.note_list);
 
-    return Ok(res);
+    Ok(())
 }
