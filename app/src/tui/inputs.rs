@@ -7,13 +7,7 @@ use ratatui::{
 };
 use tuipaz_textarea::TextArea;
 
-#[derive(Debug, Clone, Copy, Eq, PartialEq)]
-pub(crate) enum InputState {
-    Active,
-    Submit,
-    Inactive,
-    Error,
-}
+use super::app::ComponentState;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum InputAction {
@@ -25,12 +19,12 @@ pub(crate) enum InputAction {
 #[derive(Debug, Clone)]
 pub(crate) struct UserInput<'i> {
     pub(crate) text: TextArea<'i>,
-    state: InputState,
+    state: ComponentState,
     action: InputAction,
 }
 
 impl<'i> UserInput<'i> {
-    pub(crate) fn new(state: InputState, action: InputAction) -> Self {
+    pub(crate) fn new(state: ComponentState, action: InputAction) -> Self {
         let mut text = TextArea::default();
         text.set_cursor_line_style(Style::default());
         text.set_placeholder_text("Enter a title...");
@@ -43,11 +37,11 @@ impl<'i> UserInput<'i> {
         }
     }
 
-    pub(crate) fn set_state(&mut self, new_state: InputState) {
+    pub(crate) fn set_state(&mut self, new_state: ComponentState) {
         self.state = new_state;
     }
 
-    pub(crate) fn get_state(&mut self) -> InputState {
+    pub(crate) fn get_state(&mut self) -> ComponentState {
         self.state
     }
 
@@ -66,16 +60,16 @@ impl Widget for UserInput<'_> {
         Self: Sized,
     {
         let (title_style, hint_style, text_style) = match self.state {
-            InputState::Active => (Style::default().bold().fg(Color::Yellow), Style::default().bold(), Style::default()),
-            InputState::Submit => (Style::default().bold().fg(Color::Blue), Style::default().bold(), Style::default()),
-            InputState::Inactive => (Style::default().bold().dim(), Style::default().bold().dim(), Style::default().dim()),
-            InputState::Error => (Style::default().bold().fg(Color::Red), Style::default().bold().fg(Color::Red), Style::default()),
+            ComponentState::Active => (Style::default().bold().fg(Color::Yellow), Style::default().bold(), Style::default()),
+            ComponentState::Inactive => (Style::default().bold().dim(), Style::default().bold().dim(), Style::default().dim()),
+            ComponentState::Unavailable => (Style::default().dim(), Style::default().dim(), Style::default().dim()),
+            ComponentState::Error => (Style::default().bold().fg(Color::Red), Style::default().bold().fg(Color::Red), Style::default()),
         };
 
         let (title_span, input_hint) = match (self.action, self.state) {
             (
                 InputAction::NoteTitle | InputAction::Note | InputAction::LinkedNote,
-                InputState::Error,
+                ComponentState::Error,
             ) => (
                 Span::styled(
                     format!(" Error: {:?} already exists ", self.text.lines()),
