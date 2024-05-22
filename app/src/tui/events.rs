@@ -41,7 +41,7 @@ impl Events {
                 Input {
                     key: Key::Enter, ..
                 } => {
-                    let btn_state = app.btns[app.btn_idx].get_state();
+                    let btn_state = app.current_btn().get_state();
 
                     if btn_state == ComponentState::Active {
                         Self::btn_action(app);
@@ -430,16 +430,16 @@ impl Events {
     }
 
     fn switch_btns(app: &mut App) {
-        match app.btns[app.btn_idx].get_state() {
+        match app.current_btn().get_state() {
             ComponentState::Unavailable => {}
-            _ => app.btns[app.btn_idx].set_state(ComponentState::Inactive),
+            _ => app.current_btn().set_state(ComponentState::Inactive),
         }
 
         app.btn_idx = (app.btn_idx + 1) % app.btns.len();
 
-        match app.btns[app.btn_idx].get_state() {
+        match app.current_btn().get_state() {
             ComponentState::Unavailable => {}
-            _ => app.btns[app.btn_idx].set_state(ComponentState::Active),
+            _ => app.current_btn().set_state(ComponentState::Active),
         }
     }
 
