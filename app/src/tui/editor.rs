@@ -687,13 +687,12 @@ impl<'a> Editor<'a> {
         let to_delete = self.body.deleted_link_ids.len();
         if DELETE_KEYS.contains(key) && to_delete > 0 {
             for _ in 0..to_delete {
-                let idx = self
+                let id = self
                     .body
                     .deleted_link_ids
                     .pop()
-                    .expect("Link to delete should exist")
-                    .0;
-                self.links.remove(idx);
+                    .expect("Link to delete should exist");
+                self.links.remove(id);
             }
         }
     }
