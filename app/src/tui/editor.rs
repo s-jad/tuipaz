@@ -64,7 +64,7 @@ impl Link {
         }
     }
 
-    pub(crate) fn to_db_link(self) -> DbNoteLink {
+    pub(crate) fn to_db_link(&self) -> DbNoteLink {
         DbNoteLink {
             parent_note_id: self.id,
             textarea_id: self.text_id,
@@ -733,21 +733,18 @@ impl<'a> Editor<'a> {
     }
 
     fn process_command_key_inputs(&mut self, input: Input) {
-        match input.key {
-            Key::Char(c) => {
-                self.cmd_buf.push(c);
+        if let Key::Char(c) = input.key {
+            self.cmd_buf.push(c);
 
-                if DELETE_COMMANDS.contains(&c) && self.cmd_state == CommandState::Delete {
-                    self.execute_delete(c);
-                } else if GOTO_COMMANDS.contains(&c) && self.cmd_state == CommandState::GoTo {
-                    self.execute_goto(c);
-                } else if YANK_COMMANDS.contains(&c) && self.cmd_state == CommandState::Yank {
-                    self.execute_yank(c);
-                } else {
-                    self.cmd_state = CommandState::NoCommand;
-                }
+            if DELETE_COMMANDS.contains(&c) && self.cmd_state == CommandState::Delete {
+                self.execute_delete(c);
+            } else if GOTO_COMMANDS.contains(&c) && self.cmd_state == CommandState::GoTo {
+                self.execute_goto(c);
+            } else if YANK_COMMANDS.contains(&c) && self.cmd_state == CommandState::Yank {
+                self.execute_yank(c);
+            } else {
+                self.cmd_state = CommandState::NoCommand;
             }
-            _ => {}
         }
     }
 
@@ -917,7 +914,7 @@ impl<'a> Editor<'a> {
                 let num_buf_len = self.num_buf.len() as u32;
                 if num_buf_len != 0 {
                     let num = self.get_num_from_buf(num_buf_len);
-                    self.body.move_cursor(CursorMove::Jump(num as u16 - 1, 0));
+                    self.body.move_cursor(CursorMove::Jump(num - 1, 0));
                     self.num_buf.clear();
                 } else {
                     self.body.move_cursor(CursorMove::Top);
@@ -952,8 +949,8 @@ impl<'a> Editor<'a> {
             .enumerate()
             .fold(0u32, |mut acc, (idx, n)| {
                 acc += std::cmp::max(
-                    *n as u32,
-                    (10u32).pow(num_buf_len - 1 - idx as u32) * *n as u32,
+                    *n,
+                    (10u32).pow(num_buf_len - 1 - idx as u32) * *n,
                 );
                 acc
             }) as u16
