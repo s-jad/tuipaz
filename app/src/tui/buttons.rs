@@ -4,13 +4,7 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Padding, Paragraph, Widget, Wrap},
 };
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum ButtonState {
-    Active,
-    Clicked,
-    Inactive,
-    Unavailable,
-}
+use super::app::ComponentState;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ButtonAction {
@@ -22,12 +16,12 @@ pub(crate) enum ButtonAction {
 #[derive(Debug, Clone)]
 pub(crate) struct Button {
     pub(crate) text: String,
-    state: ButtonState,
+    state: ComponentState,
     action: ButtonAction,
 }
 
 impl Button {
-    pub(crate) fn new(text: String, state: ButtonState, action: ButtonAction) -> Self {
+    pub(crate) fn new(text: String, state: ComponentState, action: ButtonAction) -> Self {
         Self {
             text,
             state,
@@ -35,11 +29,11 @@ impl Button {
         }
     }
 
-    pub(crate) fn set_state(&mut self, new_state: ButtonState) {
+    pub(crate) fn set_state(&mut self, new_state: ComponentState) {
         self.state = new_state;
     }
 
-    pub(crate) fn get_state(&self) -> ButtonState {
+    pub(crate) fn get_state(&self) -> ComponentState {
         self.state
     }
 
@@ -54,10 +48,10 @@ impl Widget for Button {
         Self: Sized,
     {
         let (fg_clr, border_style) = match self.state {
-            ButtonState::Active => (Color::default(), Style::default().bold()),
-            ButtonState::Clicked => (Color::Yellow, Style::default().bold()),
-            ButtonState::Inactive => (Color::Blue, Style::default().dim()),
-            ButtonState::Unavailable => (Color::Gray, Style::default().dim()),
+            ComponentState::Active => (Color::default(), Style::default().bold()),
+            ComponentState::Error => (Color::Red, Style::default().bold()),
+            ComponentState::Inactive => (Color::Blue, Style::default().dim()),
+            ComponentState::Unavailable => (Color::Gray, Style::default().dim()),
         };
 
         let btn_block = Block::new()
