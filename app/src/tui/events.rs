@@ -66,10 +66,7 @@ impl Events {
                     alt: true,
                     ..
                 } => {
-                    let has_links = match app.editor.body.links.len() {
-                        0 => false,
-                        _ => true,
-                    };
+                    let has_links = !matches!(app.editor.body.links.len(), 0);
                     let title = app.editor.title.clone();
                     let body = app.editor.body.lines().join("\n");
                     let note_id = app.editor.note_id;
@@ -149,7 +146,7 @@ impl Events {
                             .expect("Link should be set up")
                             .linked_id;
 
-                        Self::load_note(app, linked_note_id as i64).await?;
+                        Self::load_note(app, linked_note_id).await?;
                     }
                     None => {
                         app.editor.body.input(input);
@@ -275,11 +272,8 @@ impl Events {
                 }
                 _ => {}
             },
-            Screen::Popup => match input {
-                Input { key: Key::Esc, .. } => {
-                    app.current_screen = app.prev_screen;
-                }
-                _ => {}
+            Screen::Popup => if let Input { key: Key::Esc, .. } = input {
+                app.current_screen = app.prev_screen;
             },
             Screen::Exiting => match input {
                 Input {
@@ -359,7 +353,7 @@ impl Events {
                                 app.user_msg = new_msg;
                                 app.prev_screen = app.current_screen;
                                 app.current_screen = Screen::Popup;
-                                return Ok(());
+                                Ok(())
                             }
                             Err(err) => {
                                 let new_msg = UserMessage::new(
@@ -369,7 +363,7 @@ impl Events {
                                 app.user_msg = new_msg;
                                 app.prev_screen = app.current_screen;
                                 app.current_screen = Screen::Popup;
-                                return Err(err);
+                                Err(err)
                             }
                         }
                     }
@@ -379,7 +373,7 @@ impl Events {
                         app.user_msg = new_msg;
                         app.prev_screen = app.current_screen;
                         app.current_screen = Screen::Popup;
-                        return Ok(());
+                        Ok(())
                     }
                 }
             }
@@ -389,7 +383,7 @@ impl Events {
                 app.user_msg = new_msg;
                 app.prev_screen = app.current_screen;
                 app.current_screen = Screen::Popup;
-                return Err(err);
+                Err(err)
             }
         }
     }
@@ -401,7 +395,7 @@ impl Events {
             Ok(note) => {
                 let body = match note.body {
                     Some(text) => text
-                        .split("\n")
+                        .split('\n')
                         .map(|line| line.to_owned())
                         .collect::<Vec<String>>(),
                     None => vec!["".to_owned()],
@@ -416,7 +410,7 @@ impl Events {
                     0 => vec![],
                     _ => db_links
                         .into_iter()
-                        .map(|dbl| Link::from_db_link(dbl))
+                        .map(Link::from_db_link)
                         .collect::<Vec<Link>>(),
                 };
 
@@ -432,7 +426,7 @@ impl Events {
                 app.user_msg = new_msg;
                 app.prev_screen = app.current_screen;
                 app.current_screen = Screen::Popup;
-                Err(err.into())
+                Err(err)
             }
         }
     }
@@ -534,9 +528,9 @@ impl Events {
                                     app.note_list.update(new_nid);
                                     app.current_screen = Screen::Main;
                                     app.active_widget = Some(ActiveWidget::Editor);
-                                    return Ok(());
+                                    Ok(())
                                 }
-                                Err(err) => return Err(err),
+                                Err(err) => Err(err),
                             }
                         } else {
                             // if not linked to another note, simply switch to editor with new note
