@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use color_eyre::eyre::{Context, Result};
 use sqlx::{Pool, Sqlite};
 
@@ -65,8 +63,8 @@ pub(crate) struct App<'a> {
     pub(crate) prev_screen: Screen,
     pub(crate) editor: Editor<'a>,
     pub(crate) note_list: NoteList,
-    pub(crate) btns: HashMap<u8, Button>,
-    pub(crate) btn_idx: u8,
+    pub(crate) btns: [Button; 2],
+    pub(crate) btn_idx: usize,
     pub(crate) user_input: UserInput<'a>,
     pub(crate) user_msg: UserMessage,
     pub(crate) sidebar: SidebarState,
@@ -95,24 +93,18 @@ impl<'a> App<'a> {
             prev_screen: Screen::Welcome,
             editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], vec![], None),
             note_list,
-            btns: HashMap::from([
-                (
-                    0,
+            btns: [
                     Button::new(
                         "New".to_owned(),
                         ComponentState::Active,
                         ButtonAction::RenderNewNoteScreen,
                     ),
-                ),
-                (
-                    1,
                     Button::new(
                         "Load".to_owned(),
                         load_btn_state,
                         ButtonAction::RenderLoadNoteScreen,
                     ),
-                ),
-            ]),
+            ],
             btn_idx: 0,
             user_input: UserInput::new(ComponentState::Active, InputAction::Note),
             user_msg: UserMessage::welcome(),
