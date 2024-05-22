@@ -23,7 +23,7 @@ pub(crate) fn ui(app: &mut App, frame: &mut Frame) {
     }
 }
 
-fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
+fn render_welcome_screen(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
 
@@ -41,7 +41,7 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
     // - The bottom section for buttons.
     let layout = Layout::default()
         .direction(Direction::Vertical)
-        .constraints(&[
+        .constraints([
             Constraint::Percentage(40), // Title section
             Constraint::Percentage(20), // buttons
             Constraint::Percentage(40), // Bottom padding
@@ -58,7 +58,7 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
 
     let btn_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(&two_btn_split)
+        .constraints(two_btn_split)
         .split(layout[1]);
 
     let new_note_btn = app
@@ -75,13 +75,13 @@ fn render_welcome_screen<'a>(app: &mut App, frame: &mut Frame) {
     load_note_btn.clone().render(btn_layout[3], buf);
 }
 
-fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
+fn render_main_screen(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
 
     let layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(&[
+        .constraints([
             Constraint::Percentage(100 - app.sidebar_size),
             Constraint::Percentage(app.sidebar_size),
         ])
@@ -109,7 +109,7 @@ fn render_main_screen<'a>(app: &mut App, frame: &mut Frame) {
         .render(layout[1], buf);
 }
 
-fn render_popup<'a>(app: &mut App<'a>, frame: &mut Frame) {
+fn render_popup(app: &mut App<'_>, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
     app.user_msg.clone().render(area, buf);
@@ -135,7 +135,7 @@ fn render_exit_screen(frame: &mut Frame) {
         .render(centered_rect(25, 15, area), buf);
 }
 
-fn render_load_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
+fn render_load_note_screen(app: &mut App<'_>, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
 
@@ -144,7 +144,7 @@ fn render_load_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
         .render(centered_rect(60, 100, area), buf);
 }
 
-fn render_new_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
+fn render_new_note_screen(app: &mut App<'_>, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
 
@@ -153,13 +153,13 @@ fn render_new_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
         .render(centered_rect(50, 20, area), buf);
 }
 
-fn render_new_linked_note_screen<'a>(app: &mut App<'a>, frame: &mut Frame) {
+fn render_new_linked_note_screen(app: &mut App<'_>, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
 
     let layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(&[Constraint::Percentage(50), Constraint::Percentage(50)])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
         .split(area);
 
     app.user_input
