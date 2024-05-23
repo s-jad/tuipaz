@@ -45,6 +45,7 @@ pub(crate) enum Screen {
     NewNote,
     NewLinkedNote,
     LoadNote,
+    DeleteNoteConfirmation,
     Popup,
     Exiting,
 }
