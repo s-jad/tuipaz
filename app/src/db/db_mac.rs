@@ -191,19 +191,36 @@ impl DbMac {
         }
     }
 
-    pub(crate) async fn delete_link(db: &SqlitePool, parent_note_id: i64, textarea_id: i64) -> Result<()> {
-        let result = sqlx::query!("
-            DELETE FROM links 
-            WHERE 
-                parent_note_id=$1 
-            AND 
-                textarea_id=$2",
-            parent_note_id,
-            textarea_id
-        )
-        .execute(db)
-        .await;
+    pub(crate) async fn delete_note(db: &SqlitePool, note_id: i64) -> Result<()> {
+        let delete_links_result = sqlx::query!("DELETE FROM links WHERE parent_note_id=? OR linked_note_id=?", note_id, note_id)
+           .execute(db)
+           .await;
+    
+        match delete_links_result{
+            Ok(_) => {
+                let delete_note_result = sqlx::query!("DELETE FROM notes WHERE id=?", note_id).execute(db).await;
 
+                match delete_note_result {
+                    Ok(_) => Ok(()),
+                    Err(e) => Err(eyre!("Failed to delete note: {:?}", e))
+
+                }
+            },
+            Err(e) => Err(eyre!("Failed to delete links attached to deleted note: {:?}", e))
+        }
+    }
+
+    pub(crate) async fn delete_links(db: &SqlitePool, link_identifiers: Vec<(i64, i64)>) -> Result<()> {
+        let where_clause = link_identifiers.iter().map(|&(parent_note_id, textarea_id)| {
+            format!("(parent_note_id ={} AND textarea_id ={})", parent_note_id, textarea_id)
+        }).collect::<Vec<_>>().join(" OR ");
+
+        let query_str = format!(r#"DELETE FROM links WHERE {}"#, where_clause);
+        
+        let result = sqlx::query(&query_str)
+            .execute(db)  
+            .await;
+        
         match result {
             Ok(_) => Ok(()),
             Err(e) => Err(eyre!("Failed to delete link: {:?}", e)),
