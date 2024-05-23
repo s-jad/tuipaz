@@ -1,12 +1,12 @@
-use std::time::{Duration, Instant};
-
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     prelude::{Buffer, Rect},
     style::{Style, Stylize},
-    text::Line,
+    text::{Line, Span},
     widgets::{block::Title, Block, BorderType, Borders, Padding, Paragraph, Widget, Wrap},
 };
+
+use super::app::Screen;
 
 #[derive(Debug, Clone)]
 pub(crate) enum MessageType {
@@ -19,6 +19,7 @@ pub(crate) enum MessageType {
 pub(crate) struct UserMessage {
     pub(crate) msg: String,
     pub(crate) typ: MessageType,
+    pub(crate) next_screen: Option<Screen>,
 }
 
 impl UserMessage {
@@ -26,11 +27,12 @@ impl UserMessage {
         Self {
             msg: "Welcome to Tuipaz!".to_string(),
             typ: MessageType::Info,
+            next_screen: None,
         }
     }
 
-    pub(crate) fn new(msg: String, typ: MessageType) -> Self {
-        Self { msg, typ }
+    pub(crate) fn new(msg: String, typ: MessageType, next_screen: Option<Screen>) -> Self {
+        Self { msg, typ, next_screen }
     }
 }
 
@@ -39,19 +41,20 @@ impl Widget for UserMessage {
     where
         Self: Sized,
     {
-        let (title, style) = match self.typ {
-            MessageType::Info => (" Info ".to_string(), Style::new().blue().bold()),
-            MessageType::Warning => (" Warning ".to_string(), Style::new().yellow().bold()),
-            MessageType::Error => (" Error ".to_string(), Style::new().red().bold()),
+        let title = match self.typ {
+            MessageType::Info => Span::styled(" Info ".to_string(), Style::new().blue().bold()),
+            MessageType::Warning => Span::styled(" Warning ".to_string(), Style::new().yellow().bold()),
+            MessageType::Error => Span::styled(" Error ".to_string(), Style::new().red().bold()),
         };
-
-        let bottom_title = " <Esc> Return to previous screen ".to_string();
-        let bt_width = (bottom_title.len() + 2) as u16;
+    
+        let bottom_txt = " <Esc> Return to previous screen ";
+        let bottom_title = Span::styled(bottom_txt, Style::default().bold());
+        let bt_width = (bottom_txt.len() + 2) as u16;
 
         let popup_block = Block::default()
             .title(Title::from(title).alignment(Alignment::Center))
             .borders(Borders::ALL)
-            .title_bottom(Line::from(bottom_title))
+            .title_bottom(bottom_title)
             .padding(Padding::vertical(1))
             .border_type(BorderType::Rounded);
 
@@ -65,7 +68,7 @@ impl Widget for UserMessage {
         let popup_text = self
             .msg
             .lines()
-            .map(|l| Line::from(l).style(style).alignment(Alignment::Center))
+            .map(|l| Line::from(l).alignment(Alignment::Center))
             .collect::<Vec<Line>>();
 
         let msg_height = (popup_text.len() as f32 * 1.2).ceil() as u16 + 4;
