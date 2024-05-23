@@ -12,6 +12,19 @@ use super::{
     user_messages::{MessageType, UserMessage},
 };
 
+const DELETE_KEYS: [Key; 10] = [
+    Key::Char('d'),
+    Key::Char('w'),
+    Key::Char('b'),
+    Key::Char('j'),
+    Key::Char('k'),
+    Key::Char('l'),
+    Key::Char('h'),
+    Key::Char('x'),
+    Key::Delete,
+    Key::Backspace,
+];
+
 pub(crate) struct Events {}
 
 impl Events {
@@ -33,6 +46,7 @@ impl Events {
                     alt: true,
                     ..
                 } => {
+                    app.prev_screen = app.current_screen;
                     Self::show_exit_screen(app);
                 }
                 Input { key: Key::Tab, .. } => {
@@ -55,6 +69,7 @@ impl Events {
                     alt: true,
                     ..
                 } => {
+                    app.prev_screen = app.current_screen;
                     Self::show_exit_screen(app);
                 }
                 Input {
@@ -74,6 +89,7 @@ impl Events {
                     alt: true,
                     ..
                 } => {
+                    app.prev_screen = app.current_screen;
                     app.current_screen = Screen::LoadNote;
                     app.active_widget = Some(ActiveWidget::NoteList);
                 }
@@ -82,6 +98,7 @@ impl Events {
                     alt: true,
                     ..
                 } => {
+                    app.prev_screen = app.current_screen;
                     app.current_screen = Screen::NewNote;
                     app.user_input.set_action(InputAction::Note);
                     app.active_widget = Some(ActiveWidget::NoteTitleInput);
@@ -94,6 +111,19 @@ impl Events {
                     app.current_screen = Screen::NewNote;
                     app.user_input.set_action(InputAction::NoteTitle);
                     app.active_widget = Some(ActiveWidget::NoteTitleInput);
+                }
+                Input {
+                    key: Key::Char('d'),
+                    alt: true,
+                    ..
+                } => {
+                    app.prev_screen = app.current_screen;
+                    app.current_screen = Screen::DeleteNoteConfirmation;
+                    app.user_msg = UserMessage::new(
+                        format!("Are you sure you want to delete {}? (y/n)", app.editor.title),
+                        MessageType::Warning,
+                        None,
+                    );
                 }
                 Input {
                     key: Key::Char('f'),
@@ -128,6 +158,7 @@ impl Events {
                         app.active_widget = Some(ActiveWidget::NoteTitleInput);
                         app.user_input.set_state(ComponentState::Active);
                         app.note_list.set_state(ComponentState::Inactive);
+                        app.editor.body.new_link = false;
                     }
                 }
                 Input {
@@ -149,7 +180,11 @@ impl Events {
                     }
                 },
                 input => {
-                    app.editor.handle_input(input);
+                    app.editor.handle_input(input.clone());
+                    
+                    if let Some(key) = DELETE_KEYS.iter().find(|&&k| k == input.key) {
+                        Self::check_link_deletion(app, key).await?;
+                    }
                 }
             },
             Screen::NewNote => match input {
@@ -158,10 +193,11 @@ impl Events {
                     alt: true,
                     ..
                 } => {
+                    app.prev_screen = app.current_screen;
                     Self::show_exit_screen(app);
                 }
                 Input { key: Key::Esc, .. } => {
-                    app.current_screen = Screen::Main;
+                    app.current_screen = app.prev_screen;
                     app.active_widget = Some(ActiveWidget::Editor);
                 }
                 Input {
@@ -190,12 +226,13 @@ impl Events {
                     alt: true,
                     ..
                 } => {
+                    app.prev_screen = app.current_screen;
                     Self::show_exit_screen(app);
                 }
                 Input { key: Key::Esc, .. } => {
-                    app.current_screen = Screen::Main;
+                    app.current_screen = app.prev_screen;
                     app.active_widget = Some(ActiveWidget::Editor);
-                    app.editor.body.delete_link(app.editor.body.next_link_id - 1);
+                    app.editor.body.delete_link(app.editor.body.next_link_id);
                     
                 }
                 Input {
@@ -244,8 +281,16 @@ impl Events {
                 }
             },
             Screen::LoadNote => match input {
+                Input {
+                    key: Key::Char('q'),
+                    alt: true,
+                    ..
+                } => {
+                    app.prev_screen = app.current_screen;
+                    Self::show_exit_screen(app);
+                }
                 Input { key: Key::Esc, .. } => {
-                    app.current_screen = Screen::Main;
+                    app.current_screen = app.prev_screen;
                 }
                 Input { key: Key::Down, .. }
                 | Input {
@@ -271,8 +316,45 @@ impl Events {
                 _ => {}
             },
             Screen::Popup => if let Input { key: Key::Esc, .. } = input {
-                app.current_screen = app.prev_screen;
+                if let Some(screen) = app.user_msg.next_screen {
+                    app.current_screen = screen;
+                } else {
+                    app.current_screen = app.prev_screen;
+                }
             },
+            Screen::DeleteNoteConfirmation => match input {
+                Input {
+                    key: Key::Esc,
+                    ..
+                } => {
+                    app.current_screen = app.prev_screen;
+                }
+                Input {
+                    key: Key::Char('y'),
+                    ..
+                } => {
+                    if let Some(note_id) = app.editor.note_id {
+                        DbMac::delete_note(&app.db, note_id).await?;
+                        app.note_list.remove(note_id);
+                        app.current_screen = Screen::Welcome;
+                    } else {
+                        app.current_screen = Screen::Popup;
+                        app.user_msg = UserMessage::new(
+                            format!("Error: couldn't delete {}", app.editor.title),
+                            MessageType::Error,
+                            Some(Screen::Main),
+                        );
+                    }
+                }
+                Input {
+                    key: Key::Char('n'),
+                    ..
+                } => {
+                    app.current_screen = app.prev_screen;
+                    app.active_widget = Some(ActiveWidget::Editor);
+                }
+                _ => {}
+            }
             Screen::Exiting => match input {
                 Input {
                     key: Key::Char('y'),
@@ -284,7 +366,7 @@ impl Events {
                     key: Key::Char('n'),
                     ..
                 } => {
-                    app.current_screen = Screen::Main;
+                    app.current_screen = app.prev_screen;
                     app.active_widget = Some(ActiveWidget::Editor);
                 }
                 _ => {}
@@ -346,19 +428,21 @@ impl Events {
 
                         match result {
                             Ok(_) => {
-                                let new_msg =
-                                    UserMessage::new("Note saved!".to_string(), MessageType::Info);
-                                app.user_msg = new_msg;
+                                app.user_msg = UserMessage::new(
+                                    "Note saved!".to_string(),
+                                    MessageType::Info,
+                                    None,
+                                );
                                 app.prev_screen = app.current_screen;
                                 app.current_screen = Screen::Popup;
                                 Ok(())
                             }
                             Err(err) => {
-                                let new_msg = UserMessage::new(
+                                app.user_msg = UserMessage::new(
                                     format!("Error saving note links!: {:?}", err),
                                     MessageType::Error,
+                                    None,
                                 );
-                                app.user_msg = new_msg;
                                 app.prev_screen = app.current_screen;
                                 app.current_screen = Screen::Popup;
                                 Err(err)
@@ -366,9 +450,11 @@ impl Events {
                         }
                     }
                     false => {
-                        let new_msg =
-                            UserMessage::new("Note saved!".to_string(), MessageType::Info);
-                        app.user_msg = new_msg;
+                        app.user_msg = UserMessage::new(
+                            "Note saved!".to_string(),
+                            MessageType::Info,
+                            None,
+                        );
                         app.prev_screen = app.current_screen;
                         app.current_screen = Screen::Popup;
                         Ok(())
@@ -376,9 +462,11 @@ impl Events {
                 }
             }
             Err(err) => {
-                let new_msg =
-                    UserMessage::new(format!("Error saving note!: {:?}", err), MessageType::Error);
-                app.user_msg = new_msg;
+                app.user_msg = UserMessage::new(
+                    format!("Error saving note links!: {:?}", err),
+                    MessageType::Error,
+                    None,
+                );
                 app.prev_screen = app.current_screen;
                 app.current_screen = Screen::Popup;
                 Err(err)
@@ -417,24 +505,15 @@ impl Events {
                 Ok(())
             }
             Err(err) => {
-                let new_msg = UserMessage::new(
-                    format!("Error loading note!: {:?}", err),
+                app.user_msg = UserMessage::new(
+                    format!("Error saving note links!: {:?}", err),
                     MessageType::Error,
+                    None,
                 );
-                app.user_msg = new_msg;
                 app.prev_screen = app.current_screen;
                 app.current_screen = Screen::Popup;
                 Err(err)
             }
-        }
-    }
-
-    async fn delete_link(app: &mut App<'_>, parent_note_id: i64, textarea_id: i64) -> Result<()> {
-        let result = DbMac::delete_link(&app.db, parent_note_id, textarea_id).await;
-
-        match result {
-            Ok(_) => Ok(()),
-            Err(err) => Err(err),
         }
     }
 
@@ -567,6 +646,38 @@ impl Events {
         app.editor.body.new_link = false;
     }
 
+
+    async fn check_link_deletion(app: &mut App<'_>, key: &Key) -> Result<()> {
+        let delete_amount = app.editor.body.deleted_link_ids.len();
+        let parent_note_id = app.editor.note_id.expect("Notes with links MUST be saved");
+        let mut deleted_links = vec![];
+
+        if DELETE_KEYS.contains(key) && delete_amount > 0 {
+            for _ in 0..delete_amount {
+                let textarea_id = app.editor
+                    .body
+                    .deleted_link_ids
+                    .pop()
+                    .expect("Link to delete should exist");
+                
+                // guards against cases where link hasn't been saved to editor yet
+                if !app.editor.links.is_empty() {
+                    app.editor.links.remove(textarea_id);
+                }
+                deleted_links.push((parent_note_id, textarea_id as i64));
+            }
+
+            let result = DbMac::delete_links(&app.db, deleted_links).await;
+
+            match result {
+                Ok(_) => Ok(()),
+                Err(err) => Err(err),
+            }
+        } else {
+            Ok(())
+        }
+    }
+
     fn input_new_note_title(app: &mut App) {
         let title = app.user_input.text.lines()[0].clone();
 
@@ -586,6 +697,7 @@ impl Events {
             }
         }
     }
+    
 
     fn toggle_sidebar(app: &mut App) {
         match app.sidebar {
