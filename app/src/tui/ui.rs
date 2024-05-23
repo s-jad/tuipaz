@@ -18,6 +18,7 @@ pub(crate) fn ui(app: &mut App, frame: &mut Frame) {
         Screen::NewNote => render_new_note_screen(app, frame),
         Screen::NewLinkedNote => render_new_linked_note_screen(app, frame),
         Screen::LoadNote => render_load_note_screen(app, frame),
+        Screen::DeleteNoteConfirmation => render_popup(app, frame),
         Screen::Popup => render_popup(app, frame),
         Screen::Exiting => render_exit_screen(frame),
     }
