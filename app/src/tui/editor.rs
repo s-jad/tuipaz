@@ -12,19 +12,6 @@ use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea};
 use crate::db::db_mac::DbNoteLink;
 
 const DELETE_COMMANDS: [char; 7] = ['d', 'w', 'b', 'j', 'k', 'l', 'h'];
-const DELETE_KEYS: [Key; 10] = [
-    Key::Char('d'),
-    Key::Char('w'),
-    Key::Char('b'),
-    Key::Char('j'),
-    Key::Char('k'),
-    Key::Char('l'),
-    Key::Char('h'),
-    Key::Char('x'),
-    Key::Delete,
-    Key::Backspace,
-];
-
 const YANK_COMMANDS: [char; 6] = ['w', 'b', 'j', 'k', 'l', 'h'];
 const GOTO_COMMANDS: [char; 1] = ['g'];
 
@@ -34,6 +21,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) note_id: Option<i64>,
     pub(crate) body: TextArea<'a>,
     pub(crate) links: Vec<Link>,
+    pub(crate) deleted_link_ids: Vec<(i64, i64)>,
     pub(crate) mode: EditorMode,
     pub(crate) block_info: String,
     pub(crate) prev_cursor: CursorPosition,
@@ -156,6 +144,7 @@ impl<'a> Editor<'a> {
             note_id,
             body,
             links,
+            deleted_link_ids: vec![],
             mode: EditorMode::Normal,
             block_info,
             prev_cursor: CursorPosition::Head,
@@ -188,8 +177,6 @@ impl<'a> Editor<'a> {
     }
 
     pub(crate) fn handle_input(&mut self, input: Input) {
-        let key = &input.key.clone();
-
         match self.mode {
             EditorMode::Insert => match input {
                 Input { key: Key::Esc, .. } => {
@@ -679,23 +666,8 @@ impl<'a> Editor<'a> {
                 _ => {}
             },
         }
-
-        self.check_link_deletion(key);
     }
 
-    fn check_link_deletion(&mut self, key: &Key) {
-        let to_delete = self.body.deleted_link_ids.len();
-        if DELETE_KEYS.contains(key) && to_delete > 0 {
-            for _ in 0..to_delete {
-                let id = self
-                    .body
-                    .deleted_link_ids
-                    .pop()
-                    .expect("Link to delete should exist");
-                self.links.remove(id);
-            }
-        }
-    }
 
     fn prime_command_state(&mut self, input: Input) {
         match input.key {
@@ -969,7 +941,7 @@ impl<'a> Widget for Editor<'a> {
 
         let mode_span = Span::styled(self.block_info, info_style);
         let key_hint_span = Span::styled(
-            " <Alt-q/s/l/n> Quit/Save/Load/New  <Alt-t> Edit title ",
+            " <Alt-q> Quit <Alt-/s/l/n/d> Save/Load/New/Delete note <Alt-t> Edit title ",
             Style::default(),
         );
 
