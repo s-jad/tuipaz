@@ -17,3 +17,11 @@ pub(crate) fn restore() -> io::Result<()> {
     disable_raw_mode()?;
     Ok(())
 }
+
+pub(crate) fn log_format<T: std::fmt::Debug>(data: &T, prefix: &str) -> String {
+    let mut s = String::new();
+    s.push_str(prefix);
+    s.push_str(": ");
+    s.push_str(&format!("{:?}", data));
+    s
+}
