@@ -70,6 +70,15 @@ impl NoteList {
             .title = replace_nid.title;
     }
 
+    pub(crate) fn remove(&mut self, note_id: i64) {
+        let pos = self.note_identifiers
+            .iter()
+            .position(|nid| nid.id == note_id)
+            .expect("Note should be in note_identifiers");
+
+        self.note_identifiers.remove(pos);
+    }
+
     pub(crate) fn set_state(&mut self, new_state: ComponentState) {
         self.state = new_state;
     }
@@ -87,7 +96,7 @@ impl Widget for NoteList {
         let (title_text, list_info_text) = match self.action {
             NoteListAction::LoadNote => (
                 " Load Note ",
-                " <Enter> Load Note | <ArrowUp/j> Next | <ArrowDown/k> Prev ",
+                " <Esc> Return to prev screen | <Enter> Load Note | <ArrowUp/j> Next | <ArrowDown/k> Prev ",
             ),
             NoteListAction::LinkNote => (
                 " Link Note ",
