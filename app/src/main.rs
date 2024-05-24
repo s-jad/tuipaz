@@ -3,7 +3,7 @@ mod tui;
 
 use std::path::PathBuf;
 
-use log::LevelFilter;
+use log::{LevelFilter, info};
 use log4rs::config::{Config, Root, Appender};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::append::file::FileAppender;
@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     // Initialize logging
     let path = PathBuf::from("./logs/application.log");
     match FileAppender::builder()
-       .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} | {({l}):5.5} | {f}:{L}{n}— {m}{n}")))
+       .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} | {({l}):5.5}| {f}:{L}{n} — {m}{n}")))
        .build(path) {
         Ok(file_appender) => {
             let config = Config::builder()
@@ -30,7 +30,8 @@ async fn main() -> Result<()> {
         },
         Err(e) => eprintln!("Failed to create file appender: {}", e),
     }
-
+    
+    info!("NEW SESSION\n");
     tui::errors::install_hooks()?;
     let db = init_db::create_db().await?;
     let mut term = tui::utils::init()?;
@@ -38,8 +39,7 @@ async fn main() -> Result<()> {
     let mut app = App::new(db, note_titles);
     run(&mut app, &mut term).await?;
     tui::utils::restore()?;
-
-    println!("app final state:\n{:#?}", app.note_list);
+    info!("END SESSION\n");
 
     Ok(())
 }
