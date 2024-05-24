@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use color_eyre::eyre::{Context, Result};
 use sqlx::{Pool, Sqlite};
 
@@ -92,7 +94,7 @@ impl<'a> App<'a> {
             db,
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
-            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], vec![], None),
+            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], HashMap::new(), None),
             note_list,
             btns: [
                     Button::new(
