@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use log::info;
 use ratatui::{
     layout::Alignment,
     style::{Color, Modifier, Style, Stylize},
@@ -9,7 +10,7 @@ use ratatui::{
 };
 use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea};
 
-use crate::db::db_mac::DbNoteLink;
+use crate::{db::db_mac::DbNoteLink, tui::utils::log_format};
 
 const DELETE_COMMANDS: [char; 7] = ['d', 'w', 'b', 'j', 'k', 'l', 'h'];
 const YANK_COMMANDS: [char; 6] = ['w', 'b', 'j', 'k', 'l', 'h'];
@@ -20,7 +21,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) title: String,
     pub(crate) note_id: Option<i64>,
     pub(crate) body: TextArea<'a>,
-    pub(crate) links: Vec<Link>,
+    pub(crate) links: HashMap<i64, Link>,
     pub(crate) deleted_link_ids: Vec<(i64, i64)>,
     pub(crate) mode: EditorMode,
     pub(crate) block_info: String,
@@ -99,11 +100,11 @@ impl<'a> Editor<'a> {
     pub(crate) fn new(
         title: String,
         body: Vec<String>,
-        links: Vec<Link>,
+        links: HashMap<i64, Link>,
         note_id: Option<i64>,
     ) -> Self {
         let ta_links = links
-            .iter()
+            .values()
             .map(|link| (link.text_id as usize, link.to_textarea_link()))
             .collect::<HashMap<usize,TextAreaLink>>();
 
@@ -746,6 +747,7 @@ impl<'a> Editor<'a> {
                     editor.body.move_cursor(CursorMove::Head);
                     editor.body.delete_line_by_end();
                     editor.body.delete_newline();
+                    info!("{}", log_format(&editor.body.links, "execute_delete::self.body.links"));
                 };
 
                 let num_buf_len = self.num_buf.len() as u32;
@@ -800,10 +802,7 @@ impl<'a> Editor<'a> {
                 self.cmd_buf.clear();
             }
             'b' => {
-                let actions = move |editor: &mut Editor<'a>| {
-                    editor.body.move_cursor(CursorMove::WordBack);
-                    editor.body.delete_word();
-                };
+                let actions = move |editor: &mut Editor<'a>| editor.body.delete_word();
                 let num_buf_len = self.num_buf.len() as u32;
                 match num_buf_len {
                     0 => {
