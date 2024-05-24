@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use color_eyre::eyre::{Context, Result};
 use crossterm::event::{self, Event, KeyEventKind};
+use log::info;
 use tuipaz_textarea::{Input, Key};
 
-use crate::db::db_mac::{DbMac, DbNoteLink, NoteIdentifier};
+use crate::{db::db_mac::{DbMac, DbNoteLink, NoteIdentifier}, tui::utils::log_format};
 
 use super::{
     app::{ActiveWidget, App, AppState, Screen, SidebarState, ComponentState},
@@ -168,7 +171,7 @@ impl Events {
                         let linked_note_id = app
                             .editor
                             .links
-                            .iter()
+                            .values()
                             .find(|link| link.text_id == link_id as i64)
                             .expect("Link should be set up")
                             .linked_id;
@@ -421,7 +424,7 @@ impl Events {
                             .editor
                             .links
                             .clone()
-                            .into_iter()
+                            .into_values()
                             .map(|link| link.to_db_link())
                             .collect::<Vec<DbNoteLink>>();
                         let result = DbMac::save_links(&app.db, db_links, parent_id).await;
@@ -493,11 +496,11 @@ impl Events {
                 };
 
                 let links = match db_links.len() {
-                    0 => vec![],
+                    0 => HashMap::new(),
                     _ => db_links
                         .into_iter()
-                        .map(Link::from_db_link)
-                        .collect::<Vec<Link>>(),
+                        .map(|link| (link.parent_note_id, Link::from_db_link(link)))
+                        .collect::<HashMap<i64, Link>>(),
                 };
 
                 app.editor = Editor::new(note.title, body, links, Some(note.id));
@@ -593,7 +596,7 @@ impl Events {
                                     app.editor = Editor::new(
                                         linked_title,
                                         vec![linked_body],
-                                        vec![],
+                                        HashMap::new(),
                                         Some(id),
                                     );
                                     app.note_list.update(new_nid);
@@ -606,7 +609,7 @@ impl Events {
                         } else {
                             // if not linked to another note, simply switch to editor with new note
                             app.editor =
-                                Editor::new(linked_title, vec![linked_body], vec![], Some(id));
+                                Editor::new(linked_title, vec![linked_body], HashMap::new(), Some(id));
                             app.note_list.update(new_nid);
                             app.current_screen = Screen::Main;
                             app.active_widget = Some(ActiveWidget::Editor);
@@ -640,7 +643,7 @@ impl Events {
             end_col: textarea_link.end_col,
         };
 
-        app.editor.links.push(new_link);
+        app.editor.links.insert(new_link.id, new_link);
         app.current_screen = Screen::Main;
         app.active_widget = Some(ActiveWidget::Editor);
         app.editor.body.new_link = false;
@@ -660,9 +663,11 @@ impl Events {
                     .pop()
                     .expect("Link to delete should exist");
                 
+                info!("{}", log_format(&app.editor.links, "check_link_deletion::app.editor.links"));
+
                 // guards against cases where link hasn't been saved to editor yet
                 if !app.editor.links.is_empty() {
-                    app.editor.links.remove(textarea_id);
+                    app.editor.links.remove(&(textarea_id as i64));
                 }
                 deleted_links.push((parent_note_id, textarea_id as i64));
             }
