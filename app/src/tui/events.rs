@@ -188,6 +188,10 @@ impl Events {
                     if let Some(key) = DELETE_KEYS.iter().find(|&&k| k == input.key) {
                         Self::check_link_deletion(app, key).await?;
                     }
+                    
+                    if !app.editor.links.is_empty() {
+                        Self::check_link_shift(app);
+                    }
                 }
             },
             Screen::NewNote => match input {
@@ -680,6 +684,18 @@ impl Events {
             }
         } else {
             Ok(())
+        }
+    }
+
+    fn check_link_shift(app: &mut App) {
+        for link in app.editor.links.values_mut() {
+            let ta_link = app.editor.body.links
+                .get(&(link.text_id as usize))
+                .expect("Same links should be present in editor and textarea");
+
+            link.row = ta_link.row;
+            link.start_col = ta_link.start_col;
+            link.end_col = ta_link.end_col;
         }
     }
 
