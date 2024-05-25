@@ -157,6 +157,7 @@ impl Events {
 
                         // Set the user_input widget to create a new linked note
                         app.user_input.set_action(InputAction::LinkedNote);
+                        app.prev_screen = app.current_screen;
                         app.current_screen = Screen::NewLinkedNote;
                         app.active_widget = Some(ActiveWidget::NoteTitleInput);
                         app.user_input.set_state(ComponentState::Active);
@@ -239,7 +240,7 @@ impl Events {
                 Input { key: Key::Esc, .. } => {
                     app.current_screen = app.prev_screen;
                     app.active_widget = Some(ActiveWidget::Editor);
-                    app.editor.body.delete_link(app.editor.body.next_link_id);
+                    app.editor.body.delete_link(app.editor.body.next_link_id - 1);
                     
                 }
                 Input {
