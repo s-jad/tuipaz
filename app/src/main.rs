@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     // Initialize logging
     let path = PathBuf::from("./logs/application.log");
     match FileAppender::builder()
-       .encoder(Box::new(PatternEncoder::new("{d(%Y-%m-%d %H:%M:%S)} | {({l}):5.5}| {f}:{L}{n} — {m}{n}")))
+       .encoder(Box::new(PatternEncoder::new("{n}| {({l}):5.5}| {f}:{L}{n}{m}{n}")))
        .build(path) {
         Ok(file_appender) => {
             let config = Config::builder()
@@ -31,7 +31,8 @@ async fn main() -> Result<()> {
         Err(e) => eprintln!("Failed to create file appender: {}", e),
     }
     
-    info!("NEW SESSION\n");
+    let seperator = "-".repeat(40);
+    info!("{}NEW SESSION{}\n", seperator, seperator);
     tui::errors::install_hooks()?;
     let db = init_db::create_db().await?;
     let mut term = tui::utils::init()?;
@@ -39,7 +40,7 @@ async fn main() -> Result<()> {
     let mut app = App::new(db, note_titles);
     run(&mut app, &mut term).await?;
     tui::utils::restore()?;
-    info!("END SESSION\n");
+    info!("{}END SESSION{}\n", seperator, seperator);
 
     Ok(())
 }
