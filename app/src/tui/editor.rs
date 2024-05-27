@@ -178,6 +178,8 @@ impl<'a> Editor<'a> {
     }
 
     pub(crate) fn handle_input(&mut self, input: Input) {
+        let num_buf_len = self.num_buf.len() as u32;
+
         match self.mode {
             EditorMode::Insert => match input {
                 Input { key: Key::Esc, .. } => {
@@ -201,7 +203,6 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Left, .. }, CommandState::NoCommand) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::Back);
@@ -239,7 +240,6 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Up, .. }, CommandState::NoCommand) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::Up);
@@ -263,7 +263,6 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::Forward);
@@ -280,7 +279,6 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::WordForward);
@@ -298,7 +296,6 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::WordBack);
@@ -391,7 +388,6 @@ impl<'a> Editor<'a> {
                     },
                     _,
                 ) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.delete_next_char();
@@ -510,7 +506,6 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Left, .. }, CommandState::NoCommand) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::Back);
@@ -529,7 +524,6 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Down, .. }, CommandState::NoCommand) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::Down);
@@ -548,7 +542,6 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Up, .. }, CommandState::NoCommand) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::Up);
@@ -572,7 +565,6 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::Forward);
@@ -589,7 +581,6 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::WordForward);
@@ -607,7 +598,6 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::WordBack);
@@ -747,7 +737,6 @@ impl<'a> Editor<'a> {
                     editor.body.move_cursor(CursorMove::Head);
                     editor.body.delete_line_by_end();
                     editor.body.delete_newline();
-                    info!("{}", log_format(&editor.body.links, "execute_delete::self.body.links"));
                 };
 
                 let num_buf_len = self.num_buf.len() as u32;
