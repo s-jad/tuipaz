@@ -628,6 +628,8 @@ impl Events {
     }
 
     fn link_note(app: &mut App, linked_id: i64) {
+        info!("INSIDE LINK NOTE");
+        info!("{}", log_format(&app.editor.links, "app.editor.links before"));
         let textarea_link = app
             .pending_link
             .expect("Should be a pending link if we reached this far");
@@ -648,18 +650,21 @@ impl Events {
             end_col: textarea_link.end_col,
         };
 
-        app.editor.links.insert(new_link.id, new_link);
+        app.editor.links.insert(new_link.text_id, new_link);
         app.current_screen = Screen::Main;
         app.active_widget = Some(ActiveWidget::Editor);
         app.editor.body.new_link = false;
+        info!("{}", log_format(&app.editor.links, "app.editor.links after"));
     }
 
 
     async fn check_link_deletion(app: &mut App<'_>, key: &Key) -> Result<()> {
+        info!("INSIDE CHECK LINK DELETION");
         let delete_amount = app.editor.body.deleted_link_ids.len();
         let parent_note_id = app.editor.note_id.expect("Notes with links MUST be saved");
         let mut deleted_links = vec![];
-
+        
+        info!("{}", log_format(&app.editor.links, "app.editor.links before"));
         if DELETE_KEYS.contains(key) && delete_amount > 0 {
             for _ in 0..delete_amount {
                 let textarea_id = app.editor
@@ -679,6 +684,7 @@ impl Events {
 
             let result = DbMac::delete_links(&app.db, deleted_links).await;
 
+            info!("{}", log_format(&app.editor.links, "app.editor.links after"));
             match result {
                 Ok(_) => Ok(()),
                 Err(err) => Err(err),
@@ -689,6 +695,9 @@ impl Events {
     }
 
     fn check_link_shift(app: &mut App) {
+        info!("INSIDE CHECK LINK SHIFT");
+        info!("{}", log_format(&app.editor.links, "app.editor.links before"));
+        info!("{}", log_format(&app.editor.body.links, "app.editor.body.links"));
         for link in app.editor.links.values_mut() {
             let ta_link = app.editor.body.links
                 .get(&(link.text_id as usize))
@@ -698,6 +707,7 @@ impl Events {
             link.start_col = ta_link.start_col;
             link.end_col = ta_link.end_col;
         }
+        info!("{}", log_format(&app.editor.links, "app.editor.links after"));
     }
 
     fn input_new_note_title(app: &mut App) {
