@@ -958,7 +958,12 @@ mod tests {
 
     #[test]
     fn test_execute_delete_dd_no_links() {
-        let mut editor = Editor::new("Test Note".to_string(), vec!["Line 1".to_string(), "Line 2".to_string()], HashMap::new(), None);
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["Line 1".to_string(), "Line 2".to_string()],
+            HashMap::new(),
+            None
+        );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
         
@@ -968,7 +973,12 @@ mod tests {
 
     #[test]
     fn test_execute_delete_dk_no_links() {
-        let mut editor = Editor::new("Test Note".to_string(), vec!["Line 1".to_string(), "Line 2".to_string()], HashMap::new(), None);
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["Line 1".to_string(), "Line 2".to_string()],
+            HashMap::new(),
+            None
+        );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(1, 0));
         
@@ -977,7 +987,12 @@ mod tests {
     }
     #[test]
     fn test_execute_delete_dj_no_links() {
-        let mut editor = Editor::new("Test Note".to_string(), vec!["Line 1".to_string(), "Line 2".to_string()], HashMap::new(), None);
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["Line 1".to_string(), "Line 2".to_string()],
+            HashMap::new(),
+            None
+        );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
         
@@ -987,7 +1002,12 @@ mod tests {
 
     #[test]
     fn test_execute_delete_num_dd_no_links() {
-        let mut editor = Editor::new("Test Note".to_string(), vec!["Line 1".to_string(), "Line 2".to_string()], HashMap::new(), None);
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["Line 1".to_string(), "Line 2".to_string()],
+            HashMap::new(),
+            None
+        );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
         editor.num_buf = vec![2];
@@ -1071,5 +1091,54 @@ mod tests {
         editor.body.move_cursor(CursorMove::Jump(0,0));
         editor.handle_input(Input { key: Key::Char('x'), ..Default::default() });
         assert_eq!(editor.body.lines(), vec!["7".to_string()]);
+    }
+
+    #[test]
+    fn test_goto_top_of_note() {
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["1".to_string(), "2".to_string(), 
+                "3".to_string(), "4".to_string(), 
+                "5".to_string()
+            ], 
+            HashMap::new(), 
+            None);
+        editor.set_mode(EditorMode::Normal);
+        editor.body.move_cursor(CursorMove::Jump(4,0));
+        editor.execute_goto('g');
+        assert_eq!(editor.body.cursor(), (0, 0));
+    }
+
+    #[test]
+    fn test_goto_line_num_note() {
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["1".to_string(), "2".to_string(), 
+                "3".to_string(), "4".to_string(), 
+                "5".to_string()
+            ], 
+            HashMap::new(), 
+            None);
+        editor.set_mode(EditorMode::Normal);
+        editor.num_buf = vec![3];
+        editor.body.move_cursor(CursorMove::Jump(4,0));
+        editor.execute_goto('g');
+        assert_eq!(editor.body.cursor(), (2, 0));
+    }
+
+    #[test]
+    fn test_goto_end_of_note() {
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["1".to_string(), "2".to_string(), 
+                "3".to_string(), "4".to_string(), 
+                "5".to_string()
+            ], 
+            HashMap::new(), 
+            None);
+        editor.set_mode(EditorMode::Normal);
+        editor.body.move_cursor(CursorMove::Jump(0,0));
+        editor.handle_input(Input { key: Key::Char('G'), shift: true, ..Default::default() });
+        assert_eq!(editor.body.cursor(), (4, 0));
     }
 }
