@@ -710,12 +710,11 @@ impl<'a> Editor<'a> {
     }
 
     fn execute_delete(&mut self, modifier: char) {
+        info!("INSIDE EXECUTE_DELETE");
         match modifier {
             'd' | 'j' => {
                 let actions = move |editor: &mut Editor<'a>| {
-                    editor.body.move_cursor(CursorMove::Head);
-                    editor.body.delete_line_by_end();
-                    editor.body.move_cursor(CursorMove::Down);
+                    editor.body.delete_line(false);
                 };
 
                 let num_buf_len = self.num_buf.len() as u32;
@@ -732,9 +731,7 @@ impl<'a> Editor<'a> {
             }
             'k' => {
                 let actions = move |editor: &mut Editor<'a>| {
-                    editor.body.move_cursor(CursorMove::Head);
-                    editor.body.delete_line_by_end();
-                    editor.body.delete_newline();
+                    editor.body.delete_line(true)
                 };
 
                 let num_buf_len = self.num_buf.len() as u32;
@@ -951,5 +948,21 @@ impl<'a> Widget for Editor<'a> {
         self.body.set_block(editor_block);
 
         self.body.widget().render(area, buf);
+    }
+}
+
+#[cfg(test)]
+
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_execute_delete_dd() {
+        let mut editor = Editor::new("Test Note".to_string(), vec!["Line 1".to_string(), "Line 2".to_string()], HashMap::new(), None);
+        editor.set_mode(EditorMode::Normal);
+        editor.body.move_cursor(CursorMove::Jump(0, 0));
+        
+        editor.execute_delete('d');
+        assert_eq!(editor.body.lines(), vec!["Line 2".to_string()]);
     }
 }
