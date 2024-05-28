@@ -150,7 +150,7 @@ impl<'a> Editor<'a> {
             block_info,
             prev_cursor: CursorPosition::Head,
             num_buf: Vec::with_capacity(6),
-            cmd_buf: String::with_capacity(3),
+            cmd_buf: String::with_capacity(6),
             cmd_state: CommandState::NoCommand,
         }
     }
@@ -221,7 +221,6 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Down, .. }, CommandState::NoCommand) => {
-                    let num_buf_len = self.num_buf.len() as u32;
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::Down);
@@ -716,7 +715,6 @@ impl<'a> Editor<'a> {
                 let actions = move |editor: &mut Editor<'a>| {
                     editor.body.move_cursor(CursorMove::Head);
                     editor.body.delete_line_by_end();
-                    editor.body.delete_newline();
                     editor.body.move_cursor(CursorMove::Down);
                 };
 
