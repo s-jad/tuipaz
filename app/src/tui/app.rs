@@ -128,7 +128,15 @@ impl<'a> App<'a> {
                 self.user_input.set_state(ComponentState::Active);
                 self.note_list.set_state(ComponentState::Inactive);
             }
-            _ => {}
+            ActiveWidget::Editor => {
+                self.editor.set_state(ComponentState::Active);
+                self.note_list.set_state(ComponentState::Inactive);
+            },
+            ActiveWidget::Sidebar => {
+                self.editor.set_state(ComponentState::Inactive);
+                self.note_list.set_state(ComponentState::Active);
+            },
+
         }
         self.active_widget = Some(active);
     }
