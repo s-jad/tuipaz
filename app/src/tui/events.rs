@@ -184,14 +184,16 @@ impl Events {
                     }
                 },
                 input => {
-                    app.editor.handle_input(input.clone());
+                    app.editor.handle_input(input);
                     
                     if let Some(key) = DELETE_KEYS.iter().find(|&&k| k == input.key) {
-                        Self::check_link_deletion(app, key).await?;
+                        let link_deleted = Self::check_link_deletion(app, key).await;
+                        info!("link_deleted: {:?}", link_deleted);
+                        link_deleted?
                     }
                     
                     if !app.editor.links.is_empty() {
-                        Self::check_link_shift(app);
+                        Self::check_link_moved(app);
                     }
                 }
             },
@@ -430,10 +432,12 @@ impl Events {
                             .links
                             .clone()
                             .into_values()
+                            .filter(|link| link.updated || !link.saved)
                             .map(|link| link.to_db_link())
                             .collect::<Vec<DbNoteLink>>();
+                        
+                        info!("save_note::db_links: {:?}", db_links);
                         let result = DbMac::save_links(&app.db, db_links, parent_id).await;
-
                         match result {
                             Ok(_) => {
                                 app.user_msg = UserMessage::new(
@@ -443,6 +447,12 @@ impl Events {
                                 );
                                 app.prev_screen = app.current_screen;
                                 app.current_screen = Screen::Popup;
+                                // Don't resave the same links over and over
+                                for link in app.editor.links.values_mut() {
+                                    if !link.saved {
+                                        link.saved = true;
+                                    }
+                                }
                                 Ok(())
                             }
                             Err(err) => {
@@ -500,13 +510,17 @@ impl Events {
                     false => vec![],
                 };
 
+                info!("load_note::db_links: {:?}", db_links);
+
                 let links = match db_links.len() {
                     0 => HashMap::new(),
                     _ => db_links
                         .into_iter()
-                        .map(|link| (link.parent_note_id, Link::from_db_link(link)))
+                        .map(|link| (link.textarea_id, Link::from_db_link(link)))
                         .collect::<HashMap<i64, Link>>(),
                 };
+
+                info!("load_note::links for editor: {:?}", links);
 
                 app.editor = Editor::new(note.title, body, links, Some(note.id));
                 app.current_screen = Screen::Main;
@@ -587,9 +601,9 @@ impl Events {
                             Self::link_note(app, new_nid.id);
 
                             // Save parent note to preserve link in textarea
-                            let has_links = true;
                             let parent_title = app.editor.title.clone();
                             let parent_body = app.editor.body.lines().join("\n");
+                            let has_links = true;
                             let note_id = app.editor.note_id;
                             let parent_result =
                                 Self::save_note(app, parent_title, parent_body, has_links, note_id)
@@ -648,6 +662,8 @@ impl Events {
             row: textarea_link.row,
             start_col: textarea_link.start_col,
             end_col: textarea_link.end_col,
+            saved: false,
+            updated: false,
         };
 
         app.editor.links.insert(new_link.text_id, new_link);
@@ -659,12 +675,10 @@ impl Events {
 
 
     async fn check_link_deletion(app: &mut App<'_>, key: &Key) -> Result<()> {
-        info!("INSIDE CHECK LINK DELETION");
         let delete_amount = app.editor.body.deleted_link_ids.len();
         let parent_note_id = app.editor.note_id.expect("Notes with links MUST be saved");
         let mut deleted_links = vec![];
         
-        info!("{}", log_format(&app.editor.links, "app.editor.links before"));
         if DELETE_KEYS.contains(key) && delete_amount > 0 {
             for _ in 0..delete_amount {
                 let textarea_id = app.editor
@@ -673,8 +687,6 @@ impl Events {
                     .pop()
                     .expect("Link to delete should exist");
                 
-                info!("{}", log_format(&app.editor.links, "check_link_deletion::app.editor.links"));
-
                 // guards against cases where link hasn't been saved to editor yet
                 if !app.editor.links.is_empty() {
                     app.editor.links.remove(&(textarea_id as i64));
@@ -684,7 +696,6 @@ impl Events {
 
             let result = DbMac::delete_links(&app.db, deleted_links).await;
 
-            info!("{}", log_format(&app.editor.links, "app.editor.links after"));
             match result {
                 Ok(_) => Ok(()),
                 Err(err) => Err(err),
@@ -694,20 +705,19 @@ impl Events {
         }
     }
 
-    fn check_link_shift(app: &mut App) {
-        info!("INSIDE CHECK LINK SHIFT");
-        info!("{}", log_format(&app.editor.links, "app.editor.links before"));
-        info!("{}", log_format(&app.editor.body.links, "app.editor.body.links"));
+    fn check_link_moved(app: &mut App) {
         for link in app.editor.links.values_mut() {
             let ta_link = app.editor.body.links
                 .get(&(link.text_id as usize))
                 .expect("Same links should be present in editor and textarea");
-
-            link.row = ta_link.row;
-            link.start_col = ta_link.start_col;
-            link.end_col = ta_link.end_col;
+            
+            if link.moved(ta_link) {
+                link.row = ta_link.row;
+                link.start_col = ta_link.start_col;
+                link.end_col = ta_link.end_col;
+                link.updated = true;
+            }
         }
-        info!("{}", log_format(&app.editor.links, "app.editor.links after"));
     }
 
     fn input_new_note_title(app: &mut App) {
