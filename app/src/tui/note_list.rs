@@ -1,9 +1,10 @@
+use log::info;
 use ratatui::{
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{
-        Block, BorderType, Borders, List, ListItem, ListState, Padding, StatefulWidget, Widget,
-    },
+        Block, BorderType, Borders, List, ListItem, ListState, Padding, StatefulWidget, Widget, block::Title,
+    }, layout::Alignment,
 };
 
 use crate::db::db_mac::NoteIdentifier;
@@ -17,11 +18,18 @@ pub(crate) enum NoteListAction {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) enum NoteListMode {
+    Sidebar,
+    Fullscreen,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct NoteList {
     pub(crate) selected: usize,
     pub(crate) note_identifiers: Vec<NoteIdentifier>,
     pub(crate) action: NoteListAction,
     pub(crate) state: ComponentState,
+    pub(crate) mode: NoteListMode,
 }
 
 impl NoteList {
@@ -37,6 +45,7 @@ impl NoteList {
             note_identifiers,
             action,
             state,
+            mode: NoteListMode::Fullscreen,
         }
     }
 
@@ -86,6 +95,10 @@ impl NoteList {
     pub(crate) fn set_action(&mut self, new_action: NoteListAction) {
         self.action = new_action;
     }
+
+    pub(crate) fn set_mode(&mut self, new_mode: NoteListMode) {
+        self.mode = new_mode;
+    }
 }
 
 impl Widget for NoteList {
@@ -130,15 +143,33 @@ impl Widget for NoteList {
         let list_info = Line::styled(list_info_text, list_info_style);
 
         let title = Span::styled(title_text, title_style);
-
-        let load_note_block = Block::default()
-            .title(title)
-            .title_bottom(list_info)
-            .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
-            .border_style(border_style)
-            .padding(Padding::new(1, 1, 1, 1))
-            .style(Style::default());
+        
+        let load_note_block = match self.mode {
+            NoteListMode::Fullscreen => {
+                Block::default()
+                    .title(Title::from(title).alignment(Alignment::Center))
+                    .title_bottom(list_info)
+                    .borders(Borders::ALL)
+                    .border_type(BorderType::Rounded)
+                    .border_style(border_style)
+                    .padding(Padding::new(1, 1, 1, 1))
+                    .style(Style::default())
+            }
+            NoteListMode::Sidebar => {
+                Block::default()
+                    .title(Title::from(" File Explorer ").alignment(Alignment::Center))
+                    .title_style(Style::default().add_modifier(Modifier::BOLD))
+                    .title_bottom(Line::from(" <Alt-f> show/hide ").alignment(Alignment::Center))
+                    .padding(Padding {
+                        left: 1,
+                        right: 1,
+                        top: 0,
+                        bottom: 0,
+                    })
+                    .borders(Borders::TOP | Borders::RIGHT | Borders::BOTTOM)
+                    .border_type(BorderType::Rounded)
+            }
+        };
 
         let mut state = ListState::default().with_selected(Some(self.selected));
 
