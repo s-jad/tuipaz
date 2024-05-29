@@ -186,23 +186,54 @@ impl Events {
                     }
                 }
                 Input {
+                    key: Key::Tab, alt: true, ..
+                } => match app.active_widget {
+                    Some(ActiveWidget::Editor) => app.set_active_widget(ActiveWidget::Sidebar),
+                    Some(ActiveWidget::Sidebar) => app.set_active_widget(ActiveWidget::Editor),
+                    Some(_) | None => {}
+                }
+                Input {
                     key: Key::Enter, ..
-                } => match app.editor.body.in_link(app.editor.body.cursor()) {
-                    Some(link_id) => {
-                        let linked_note_id = app
-                            .editor
-                            .links
-                            .values()
-                            .find(|link| link.text_id == link_id as i64)
-                            .expect("Link should be set up")
-                            .linked_id;
+                }  => match app.active_widget {
+                        Some(ActiveWidget::Editor) => {
+                            match app.editor.body.in_link(app.editor.body.cursor()) {
+                                    Some(link_id) => {
+                                        let linked_note_id = app
+                                            .editor
+                                            .links
+                                            .values()
+                                            .find(|link| link.text_id == link_id as i64)
+                                            .expect("Link should be set up")
+                                            .linked_id;
 
-                        Self::load_note(app, linked_note_id).await?;
-                    }
-                    None => {
-                        app.editor.body.input(input);
-                    }
-                },
+                                        Self::load_note(app, linked_note_id).await?;
+                                    }
+                                    None => {
+                                        app.editor.body.input(input);
+                                    }
+                            }
+                        },
+                        Some(ActiveWidget::Sidebar) => {
+                            let note_idx = app.note_list.selected;
+                            let id = app.note_list.note_identifiers[note_idx].id;
+                            Self::load_note(app, id).await?;
+                        },
+                        Some(_) | None => {},
+                }
+                Input {
+                    key: Key::Up, ..
+                } => match app.active_widget {
+                        Some(ActiveWidget::Editor) => app.editor.handle_input(input),
+                        Some(ActiveWidget::Sidebar) => app.note_list.prev(),
+                        Some(_) | None => {},
+                }
+                Input {
+                    key: Key::Down, ..
+                } => match app.active_widget {
+                        Some(ActiveWidget::Editor) => app.editor.handle_input(input),
+                        Some(ActiveWidget::Sidebar) => app.note_list.next(),
+                        Some(_) | None => {},
+                }
                 input => {
                     app.editor.handle_input(input);
                     
@@ -577,15 +608,14 @@ impl Events {
     fn btn_action(app: &mut App) {
         match app.btns[app.btn_idx].get_action() {
             ButtonAction::RenderMainScreen => {
-                app.current_screen = Screen::Main;
-                app.note_list.set_mode(NoteListMode::Sidebar);
+                app.switch_to_main();
             }
             ButtonAction::RenderNewNoteScreen => {
                 app.user_input = UserInput::new(ComponentState::Active, InputAction::Note);
-                app.current_screen = Screen::NewNote;
+                app.switch_to_new_note(InputAction::Note);
             }
             ButtonAction::RenderLoadNoteScreen => {
-                app.current_screen = Screen::LoadNote;
+                app.switch_to_load_note();
             }
         }
     }
