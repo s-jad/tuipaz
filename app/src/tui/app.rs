@@ -11,7 +11,7 @@ use super::{
     editor::Editor,
     events::Events,
     inputs::{InputAction, UserInput},
-    note_list::{NoteList, NoteListAction},
+    note_list::{NoteList, NoteListAction, NoteListMode},
     ui::ui,
     user_messages::UserMessage,
     utils::Tui,
@@ -54,7 +54,7 @@ pub(crate) enum Screen {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SidebarState {
-    Open(u16),
+    Open,
     Hidden(u16),
 }
 
@@ -111,7 +111,7 @@ impl<'a> App<'a> {
             btn_idx: 0,
             user_input: UserInput::new(ComponentState::Active, InputAction::Note),
             user_msg: UserMessage::welcome(),
-            sidebar: SidebarState::Open(20),
+            sidebar: SidebarState::Open,
             sidebar_size: 20,
             pending_link: None,
             active_widget: None,
@@ -135,6 +135,24 @@ impl<'a> App<'a> {
 
     pub(crate) fn current_btn(&mut self) -> &mut Button {
         &mut self.btns[self.btn_idx]
+    }
+
+    pub(crate) fn switch_to_main(&mut self) {
+        self.current_screen = Screen::Main;
+        self.note_list.set_mode(NoteListMode::Sidebar);
+        self.active_widget = Some(ActiveWidget::Editor);
+    }
+    
+    pub(crate) fn switch_to_load_note(&mut self) {
+        self.current_screen = Screen::LoadNote;
+        self.note_list.set_mode(NoteListMode::Fullscreen);
+        self.active_widget = Some(ActiveWidget::NoteList);
+    }
+
+    pub(crate) fn switch_to_new_note(&mut self, action: InputAction) {
+        self.current_screen = Screen::NewNote;
+        self.user_input.set_action(action);
+        self.active_widget = Some(ActiveWidget::NoteTitleInput);
     }
 }
 
