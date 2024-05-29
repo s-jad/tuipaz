@@ -2,11 +2,10 @@ use std::collections::HashMap;
 
 use log::info;
 use ratatui::{
-    layout::Alignment,
     style::{Color, Modifier, Style, Stylize},
     symbols::border,
     text::{Line, Span},
-    widgets::{block::Title, Block, Borders, Padding, Widget},
+    widgets::{block::Title, Block, Borders, Padding, Widget}, layout::Alignment,
 };
 use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea};
 
@@ -29,6 +28,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) num_buf: Vec<u32>,
     pub(crate) cmd_buf: String,
     pub(crate) cmd_state: CommandState,
+    pub(crate) sidebar_open: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -118,6 +118,7 @@ impl<'a> Editor<'a> {
             .values()
             .map(|link| (link.text_id as usize, link.to_textarea_link()))
             .collect::<HashMap<usize,TextAreaLink>>();
+
         info!("Editor::new()::ta_links: {:?}", ta_links);
 
         let mut body = TextArea::new(body, ta_links);
@@ -164,6 +165,7 @@ impl<'a> Editor<'a> {
             num_buf: Vec::with_capacity(6),
             cmd_buf: String::with_capacity(6),
             cmd_state: CommandState::NoCommand,
+            sidebar_open: true,
         }
     }
 
@@ -936,9 +938,14 @@ impl<'a> Widget for Editor<'a> {
 
         let mode_span = Span::styled(self.block_info, info_style);
         let key_hint_span = Span::styled(
-            " <Alt-q> Quit <Alt-/s/l/n/d> Save/Load/New/Delete note <Alt-t> Edit title ",
+            " <Alt-q> quit | <Alt-/s/l/n/d> save/load/new/delete note | <Alt-t> edit title ",
             Style::default(),
         );
+
+        let (top_right, bottom_right) = match self.sidebar_open {
+            true => ("┬", "┴"),
+            false => ("╮", "╯"),
+        };
 
         let editor_block = Block::default()
             .title(Title::from(self.title).alignment(Alignment::Left))
@@ -947,9 +954,9 @@ impl<'a> Widget for Editor<'a> {
             .borders(Borders::ALL)
             .border_set(border::Set {
                 top_left: "╭",
-                top_right: "┬",
+                top_right,
                 bottom_left: "╰",
-                bottom_right: "┴",
+                bottom_right,
                 vertical_left: "│",
                 vertical_right: "│",
                 horizontal_top: "─",
