@@ -11,6 +11,8 @@ use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea};
 
 use crate::{db::db_mac::DbNoteLink, tui::utils::log_format};
 
+use super::app::ComponentState;
+
 const DELETE_COMMANDS: [char; 7] = ['d', 'w', 'b', 'j', 'k', 'l', 'h'];
 const YANK_COMMANDS: [char; 6] = ['w', 'b', 'j', 'k', 'l', 'h'];
 const GOTO_COMMANDS: [char; 1] = ['g'];
@@ -29,6 +31,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) cmd_buf: String,
     pub(crate) cmd_state: CommandState,
     pub(crate) sidebar_open: bool,
+    pub(crate) state: ComponentState,
 }
 
 #[derive(Debug, Clone)]
@@ -166,7 +169,12 @@ impl<'a> Editor<'a> {
             cmd_buf: String::with_capacity(6),
             cmd_state: CommandState::NoCommand,
             sidebar_open: true,
+            state: ComponentState::Active,
         }
+    }
+
+    pub(crate) fn set_state(&mut self, new_state: ComponentState) {
+        self.state = new_state;
     }
 
     pub(crate) fn set_mode(&mut self, mode: EditorMode) {
