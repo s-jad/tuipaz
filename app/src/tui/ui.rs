@@ -1,10 +1,13 @@
+use log::info;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
-    style::{Color, Modifier, Style},
-    text::{Line, Text},
-    widgets::{block::Title, Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
+    style::{Color, Style},
+    text::Text,
+    widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
     Frame,
 };
+
+use crate::tui::utils::log_format;
 
 use super::{
     app::{App, Screen},
@@ -81,26 +84,14 @@ fn render_main_screen(app: &mut App, frame: &mut Frame) {
         ])
         .split(area);
 
+    info!("{}", log_format(&app.editor.note_id, "app.editor.note_id"));
+    info!("{}", log_format(&app.editor.links, "app.editor.links"));
+
     app.editor.clone().render(layout[0], buf);
+    app.note_list.clone().render(layout[1], buf);
+    
 
-    let files_block = Block::default()
-        .title(Title::from(" File Explorer ").alignment(Alignment::Center))
-        .title_style(Style::default().add_modifier(Modifier::BOLD))
-        .padding(Padding {
-            left: 1,
-            right: 1,
-            top: 0,
-            bottom: 0,
-        })
-        .borders(Borders::TOP | Borders::RIGHT | Borders::BOTTOM)
-        .border_type(BorderType::Rounded);
 
-    let files_text = vec![Line::from("File explorer sidebar").style(Style::default())];
-
-    Paragraph::new(files_text)
-        .block(files_block)
-        .wrap(Wrap { trim: true })
-        .render(layout[1], buf);
 }
 
 fn render_popup(app: &mut App<'_>, frame: &mut Frame) {
