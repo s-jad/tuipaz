@@ -39,6 +39,8 @@ pub(crate) struct Link {
     pub(crate) row: usize,
     pub(crate) start_col: usize,
     pub(crate) end_col: usize,
+    pub(crate) saved: bool,
+    pub(crate) updated: bool,
 }
 
 impl Link {
@@ -50,6 +52,8 @@ impl Link {
             row: db_link.textarea_row as usize,
             start_col: db_link.start_col as usize,
             end_col: db_link.end_col as usize,
+            saved: true,
+            updated: false,
         }
     }
 
@@ -71,6 +75,12 @@ impl Link {
             start_col: self.start_col,
             end_col: self.end_col,
         }
+    }
+
+    pub(crate) fn moved(&self, ta_link: &TextAreaLink) -> bool {
+        self.row != ta_link.row
+            || self.start_col != ta_link.start_col
+            || self.end_col != ta_link.end_col
     }
 }
 
@@ -103,10 +113,12 @@ impl<'a> Editor<'a> {
         links: HashMap<i64, Link>,
         note_id: Option<i64>,
     ) -> Self {
+        info!("Editor::new()::param::links: {:?}", links);
         let ta_links = links
             .values()
             .map(|link| (link.text_id as usize, link.to_textarea_link()))
             .collect::<HashMap<usize,TextAreaLink>>();
+        info!("Editor::new()::ta_links: {:?}", ta_links);
 
         let mut body = TextArea::new(body, ta_links);
         body.set_cursor_line_style(Style::default());
@@ -1092,6 +1104,7 @@ mod tests {
         editor.handle_input(Input { key: Key::Char('x'), ..Default::default() });
         assert_eq!(editor.body.lines(), vec!["7".to_string()]);
     }
+
 
     #[test]
     fn test_goto_top_of_note() {
