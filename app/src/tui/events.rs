@@ -12,7 +12,7 @@ use super::{
     buttons::ButtonAction,
     editor::{Editor, Link},
     inputs::{InputAction, UserInput},
-    user_messages::{MessageType, UserMessage},
+    user_messages::{MessageType, UserMessage}, note_list::NoteListMode,
 };
 
 const DELETE_KEYS: [Key; 10] = [
@@ -93,8 +93,7 @@ impl Events {
                     ..
                 } => {
                     app.prev_screen = app.current_screen;
-                    app.current_screen = Screen::LoadNote;
-                    app.active_widget = Some(ActiveWidget::NoteList);
+                    app.switch_to_load_note();
                 }
                 Input {
                     key: Key::Char('n'),
@@ -102,18 +101,15 @@ impl Events {
                     ..
                 } => {
                     app.prev_screen = app.current_screen;
-                    app.current_screen = Screen::NewNote;
-                    app.user_input.set_action(InputAction::Note);
-                    app.active_widget = Some(ActiveWidget::NoteTitleInput);
+                    app.switch_to_new_note(InputAction::Note);
                 }
                 Input {
                     key: Key::Char('t'),
                     alt: true,
                     ..
                 } => {
-                    app.current_screen = Screen::NewNote;
-                    app.user_input.set_action(InputAction::NoteTitle);
-                    app.active_widget = Some(ActiveWidget::NoteTitleInput);
+                    app.prev_screen = app.current_screen;
+                    app.switch_to_new_note(InputAction::NoteTitle);
                 }
                 Input {
                     key: Key::Char('d'),
@@ -136,6 +132,30 @@ impl Events {
                     Self::toggle_sidebar(app);
                 }
                 Input {
+                    key: Key::Char(','),
+                    alt: true,
+                    ..
+                } => {
+                    match app.sidebar {
+                        SidebarState::Open => {
+                            app.sidebar_size = std::cmp::min(app.sidebar_size + 2, 70);
+                        },
+                        SidebarState::Hidden(_) => {},
+                    }
+                }
+                Input {
+                    key: Key::Char('.'),
+                    alt: true,
+                    ..
+                } => {
+                    match app.sidebar {
+                        SidebarState::Open => {
+                            app.sidebar_size = std::cmp::max(app.sidebar_size - 2, 12);
+                        },
+                        SidebarState::Hidden(_) => {},
+                    }
+                }
+                Input {
                     key: Key::Char('['),
                     ..
                 }
@@ -156,9 +176,9 @@ impl Events {
                         );
 
                         // Set the user_input widget to create a new linked note
-                        app.user_input.set_action(InputAction::LinkedNote);
                         app.prev_screen = app.current_screen;
                         app.current_screen = Screen::NewLinkedNote;
+                        app.user_input.set_action(InputAction::LinkedNote);
                         app.active_widget = Some(ActiveWidget::NoteTitleInput);
                         app.user_input.set_state(ComponentState::Active);
                         app.note_list.set_state(ComponentState::Inactive);
@@ -241,6 +261,7 @@ impl Events {
                 }
                 Input { key: Key::Esc, .. } => {
                     app.current_screen = app.prev_screen;
+                    app.note_list.set_mode(NoteListMode::Sidebar);
                     app.active_widget = Some(ActiveWidget::Editor);
                     app.editor.body.delete_link(app.editor.body.next_link_id - 1);
                     
@@ -300,7 +321,7 @@ impl Events {
                     Self::show_exit_screen(app);
                 }
                 Input { key: Key::Esc, .. } => {
-                    app.current_screen = app.prev_screen;
+                    app.switch_to_main();
                 }
                 Input { key: Key::Down, .. }
                 | Input {
@@ -523,7 +544,7 @@ impl Events {
                 info!("load_note::links for editor: {:?}", links);
 
                 app.editor = Editor::new(note.title, body, links, Some(note.id));
-                app.current_screen = Screen::Main;
+                app.switch_to_main();
                 Ok(())
             }
             Err(err) => {
@@ -557,6 +578,7 @@ impl Events {
         match app.btns[app.btn_idx].get_action() {
             ButtonAction::RenderMainScreen => {
                 app.current_screen = Screen::Main;
+                app.note_list.set_mode(NoteListMode::Sidebar);
             }
             ButtonAction::RenderNewNoteScreen => {
                 app.user_input = UserInput::new(ComponentState::Active, InputAction::Note);
@@ -619,8 +641,7 @@ impl Events {
                                         Some(id),
                                     );
                                     app.note_list.update(new_nid);
-                                    app.current_screen = Screen::Main;
-                                    app.active_widget = Some(ActiveWidget::Editor);
+                                    app.switch_to_main();
                                     Ok(())
                                 }
                                 Err(err) => Err(err),
@@ -630,8 +651,7 @@ impl Events {
                             app.editor =
                                 Editor::new(linked_title, vec![linked_body], HashMap::new(), Some(id));
                             app.note_list.update(new_nid);
-                            app.current_screen = Screen::Main;
-                            app.active_widget = Some(ActiveWidget::Editor);
+                            app.switch_to_main();
                             Ok(())
                         }
                     }
@@ -667,8 +687,7 @@ impl Events {
         };
 
         app.editor.links.insert(new_link.text_id, new_link);
-        app.current_screen = Screen::Main;
-        app.active_widget = Some(ActiveWidget::Editor);
+        app.switch_to_main();
         app.editor.body.new_link = false;
         info!("{}", log_format(&app.editor.links, "app.editor.links after"));
     }
@@ -734,8 +753,7 @@ impl Events {
             }
             false => {
                 app.editor.set_title(title);
-                app.current_screen = Screen::Main;
-                app.active_widget = Some(ActiveWidget::Editor);
+                app.switch_to_main();
             }
         }
     }
@@ -743,12 +761,16 @@ impl Events {
 
     fn toggle_sidebar(app: &mut App) {
         match app.sidebar {
-            SidebarState::Open(_) => {
-                app.sidebar = SidebarState::Hidden(0);
+            SidebarState::Open => {
+                app.sidebar = SidebarState::Hidden(app.sidebar_size);
+                app.sidebar_size = 0;
+                app.editor.sidebar_open = false;
                 app.active_widget = Some(ActiveWidget::Sidebar);
             }
-            SidebarState::Hidden(_) => {
-                app.sidebar = SidebarState::Open(app.sidebar_size);
+            SidebarState::Hidden(n) => {
+                app.sidebar_size = n;
+                app.sidebar = SidebarState::Open;
+                app.editor.sidebar_open = true;
                 app.active_widget = Some(ActiveWidget::Editor);
             }
         }
