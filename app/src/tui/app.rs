@@ -148,19 +148,19 @@ impl<'a> App<'a> {
     pub(crate) fn switch_to_main(&mut self) {
         self.current_screen = Screen::Main;
         self.note_list.set_mode(NoteListMode::Sidebar);
-        self.active_widget = Some(ActiveWidget::Editor);
+        self.set_active_widget(ActiveWidget::Editor);
     }
     
     pub(crate) fn switch_to_load_note(&mut self) {
         self.current_screen = Screen::LoadNote;
         self.note_list.set_mode(NoteListMode::Fullscreen);
-        self.active_widget = Some(ActiveWidget::NoteList);
+        self.set_active_widget(ActiveWidget::NoteList);
     }
 
     pub(crate) fn switch_to_new_note(&mut self, action: InputAction) {
         self.current_screen = Screen::NewNote;
         self.user_input.set_action(action);
-        self.active_widget = Some(ActiveWidget::NoteTitleInput);
+        self.set_active_widget(ActiveWidget::NoteTitleInput);
     }
 }
 
