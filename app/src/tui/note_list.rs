@@ -127,38 +127,67 @@ impl Widget for NoteList {
             )
         };
 
-        let (border_style, title_style, list_info_style, list_item_style) = match self.state {
-            ComponentState::Active => (
+        let (
+            border_style,
+            title_style,
+            list_info_style,
+            list_item_style,
+            highlight_clr
+        ) = match (self.state, self.mode) {
+            (ComponentState::Active, NoteListMode::Fullscreen) => (
                 Style::default().bold(),
                 Style::default().bold().fg(Color::Yellow),
                 Style::default().bold(),
                 Style::default(),
+                Color::Red,
             ),
-            ComponentState::Inactive => (
+            (ComponentState::Inactive, NoteListMode::Fullscreen) => (
                 Style::default().bold().dim(),
                 Style::default().bold().dim(),
                 Style::default().bold().dim(),
                 Style::default().dim(),
+                Color::default(),
             ),
-            ComponentState::Unavailable => (
+            (ComponentState::Unavailable, NoteListMode::Fullscreen) => (
                 Style::default().dim(),
                 Style::default().dim(),
                 Style::default().dim(),
                 Style::default().dim(),
+                Color::default(),
             ),
-            ComponentState::Error => (
+            (ComponentState::Error, NoteListMode::Fullscreen) => (
                 Style::default().bold(),
                 Style::default().bold().fg(Color::Red),
                 Style::default().bold().fg(Color::Red),
                 Style::default(),
+                Color::Red,
             ),
+            (ComponentState::Active, NoteListMode::Sidebar) => (
+                Style::default().bold(),
+                Style::default().bold().fg(Color::Yellow),
+                Style::default().bold(),
+                Style::default(),
+                Color::Red,
+            ),
+            (ComponentState::Inactive, NoteListMode::Sidebar) => (
+                Style::default().bold(),
+                Style::default().bold().dim(),
+                Style::default().bold().dim(),
+                Style::default().dim(),
+                Color::default(),
+            ),
+            _ => (
+                Style::default(),
+                Style::default(),
+                Style::default(),
+                Style::default(),
+                Color::Red,
+            )
         };
 
 
         let info_line = Line::styled(info_text, list_info_style).alignment(Alignment::Center);
         let title = Span::styled(title_text, title_style);
-        info!("NoteList: {:?}", self.clone());
-        info!("title: {:?}", title);
         
         let load_note_block = Block::default()
             .title(Title::from(title).alignment(Alignment::Center))
@@ -176,8 +205,8 @@ impl Widget for NoteList {
                 .map(|nid| ListItem::new(Line::from(nid.title)).style(list_item_style)),
         )
         .block(load_note_block)
-        .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
-        .highlight_symbol(">>")
+        .highlight_style(Style::default().add_modifier(Modifier::BOLD).fg(highlight_clr))
+        .highlight_symbol(">> ")
         .repeat_highlight_symbol(true);
 
         StatefulWidget::render(list, area, buf, &mut state);
