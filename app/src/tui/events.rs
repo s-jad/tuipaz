@@ -8,7 +8,7 @@ use tuipaz_textarea::{Input, Key};
 use crate::{db::db_mac::{DbMac, DbNoteLink, NoteIdentifier}, tui::utils::log_format};
 
 use super::{
-    app::{ActiveWidget, App, AppState, Screen, SidebarState, ComponentState},
+    app::{ActiveWidget, App, AppState, Screen, SidebarState, ComponentState, SearchbarState},
     buttons::ButtonAction,
     editor::{Editor, Link},
     inputs::{InputAction, UserInput},
@@ -136,7 +136,7 @@ impl Events {
                     alt: true,
                     ..
                 } => {
-                    match app.sidebar {
+                    match app.sidebar_state {
                         SidebarState::Open => {
                             app.sidebar_size = std::cmp::min(app.sidebar_size + 2, 70);
                         },
@@ -148,7 +148,7 @@ impl Events {
                     alt: true,
                     ..
                 } => {
-                    match app.sidebar {
+                    match app.sidebar_state {
                         SidebarState::Open => {
                             app.sidebar_size = std::cmp::max(app.sidebar_size - 2, 12);
                         },
@@ -791,19 +791,35 @@ impl Events {
         }
     }
     
+    fn toggle_searchbar(app: &mut App) {
+        match app.searchbar_state {
+            SearchbarState::Open => {
+                app.searchbar_state = SearchbarState::Hidden;
+                app.editor.searchbar_open = false;
+                app.active_widget = Some(ActiveWidget::Searchbar);
+            }
+            SearchbarState::Hidden => {
+                app.searchbar_state = SearchbarState::Open;
+                app.editor.searchbar_open = true;
+                app.active_widget = Some(ActiveWidget::Editor);
+            }
+        }
+    }
 
     fn toggle_sidebar(app: &mut App) {
-        match app.sidebar {
+        match app.sidebar_state {
             SidebarState::Open => {
-                app.sidebar = SidebarState::Hidden(app.sidebar_size);
+                app.sidebar_state = SidebarState::Hidden(app.sidebar_size);
                 app.sidebar_size = 0;
                 app.editor.sidebar_open = false;
+                app.searchbar.sidebar_open = false;
                 app.active_widget = Some(ActiveWidget::Sidebar);
             }
             SidebarState::Hidden(n) => {
                 app.sidebar_size = n;
-                app.sidebar = SidebarState::Open;
+                app.sidebar_state = SidebarState::Open;
                 app.editor.sidebar_open = true;
+                app.searchbar.sidebar_open = true;
                 app.active_widget = Some(ActiveWidget::Editor);
             }
         }
