@@ -12,7 +12,7 @@ use super::{
     buttons::ButtonAction,
     editor::{Editor, Link},
     inputs::{InputAction, UserInput},
-    user_messages::{MessageType, UserMessage}, note_list::NoteListMode,
+    user_messages::{MessageType, UserMessage}, note_list::{NoteListMode, NoteListAction},
 };
 
 const DELETE_KEYS: [Key; 10] = [
@@ -183,6 +183,7 @@ impl Events {
                         app.active_widget = Some(ActiveWidget::NoteTitleInput);
                         app.note_list.set_state(ComponentState::Inactive);
                         app.note_list.set_mode(NoteListMode::Fullscreen);
+                        app.note_list.set_action(NoteListAction::LinkNote);
                         app.editor.body.new_link = false;
                     }
                 }
@@ -294,6 +295,7 @@ impl Events {
                 Input { key: Key::Esc, .. } => {
                     app.current_screen = app.prev_screen;
                     app.note_list.set_mode(NoteListMode::Sidebar);
+                    app.note_list.set_action(NoteListAction::LoadNote);
                     app.active_widget = Some(ActiveWidget::Editor);
                     app.editor.body.delete_link(app.editor.body.next_link_id - 1);
                     
