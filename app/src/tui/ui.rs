@@ -1,13 +1,16 @@
+use std::collections::HashMap;
+
 use log::info;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
     text::Text,
     widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
-    Frame,
+    Frame, symbols,
 };
+use tuipaz_textarea::TextArea;
 
-use crate::tui::utils::log_format;
+use crate::tui::{utils::log_format, app::SidebarState};
 
 use super::{
     app::{App, Screen},
@@ -76,7 +79,7 @@ fn render_main_screen(app: &mut App, frame: &mut Frame) {
     let area = frame.size();
     let buf = frame.buffer_mut();
 
-    let layout = Layout::default()
+    let h_layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Percentage(100 - app.sidebar_size),
@@ -84,14 +87,17 @@ fn render_main_screen(app: &mut App, frame: &mut Frame) {
         ])
         .split(area);
 
-    info!("{}", log_format(&app.editor.note_id, "app.editor.note_id"));
-    info!("{}", log_format(&app.editor.links, "app.editor.links"));
+    let v_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage(94),
+            Constraint::Percentage(6),
+        ])
+        .split(h_layout[0]);
 
-    app.editor.clone().render(layout[0], buf);
-    app.note_list.clone().render(layout[1], buf);
-    
-
-
+    app.editor.clone().render(v_layout[0], buf);
+    app.searchbar.clone().render(v_layout[1], buf);
+    app.note_list.clone().render(h_layout[1], buf);
 }
 
 fn render_popup(app: &mut App<'_>, frame: &mut Frame) {
