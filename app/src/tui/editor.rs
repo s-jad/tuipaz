@@ -944,10 +944,24 @@ impl<'a> Widget for Editor<'a> {
             EditorMode::Visual => Style::default().bold().fg(Color::Red),
         };
 
+        let (title_style, key_hint_style, text_style) = match self.state {
+            ComponentState::Active => (
+                Style::default().bold().fg(Color::Yellow),
+                Style::default().bold(),
+                Style::default()
+            ),
+            ComponentState::Inactive => (
+                Style::default().bold().dim(),
+                Style::default().bold().dim(),
+                Style::default().dim()
+            ),
+            _ => (Style::default(), Style::default(), Style::default())
+        };
+
         let mode_span = Span::styled(self.block_info, info_style);
         let key_hint_span = Span::styled(
             " <Alt-q> quit | <Alt-/s/l/n/d> save/load/new/delete note | <Alt-t> edit title ",
-            Style::default(),
+            key_hint_style,
         );
 
         let (top_right, bottom_right) = match self.sidebar_open {
@@ -955,9 +969,11 @@ impl<'a> Widget for Editor<'a> {
             false => ("╮", "╯"),
         };
 
+        let title_text = format!(" {} ", self.title);
+        let title = Span::styled(title_text, title_style);
+
         let editor_block = Block::default()
-            .title(Title::from(self.title).alignment(Alignment::Left))
-            .title_style(Style::default().add_modifier(Modifier::BOLD))
+            .title(Title::from(title).alignment(Alignment::Left))
             .title_bottom(Line::from(vec![mode_span, key_hint_span]))
             .borders(Borders::ALL)
             .border_set(border::Set {
@@ -973,6 +989,7 @@ impl<'a> Widget for Editor<'a> {
             .padding(Padding::new(1, 1, 1, 1));
 
         self.body.set_block(editor_block);
+        self.body.set_style(text_style);
 
         self.body.widget().render(area, buf);
     }
