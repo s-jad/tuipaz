@@ -31,6 +31,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) cmd_buf: String,
     pub(crate) cmd_state: CommandState,
     pub(crate) sidebar_open: bool,
+    pub(crate) searchbar_open: bool,
     pub(crate) state: ComponentState,
 }
 
@@ -169,6 +170,7 @@ impl<'a> Editor<'a> {
             cmd_buf: String::with_capacity(6),
             cmd_state: CommandState::NoCommand,
             sidebar_open: true,
+            searchbar_open: true,
             state: ComponentState::Active,
         }
     }
@@ -312,7 +314,6 @@ impl<'a> Editor<'a> {
                 (
                     Input {
                         key: Key::Char('b'),
-                        ctrl: false,
                         ..
                     },
                     CommandState::NoCommand,
@@ -732,7 +733,6 @@ impl<'a> Editor<'a> {
     }
 
     fn execute_delete(&mut self, modifier: char) {
-        info!("INSIDE EXECUTE_DELETE");
         match modifier {
             'd' | 'j' => {
                 let actions = move |editor: &mut Editor<'a>| {
@@ -960,13 +960,13 @@ impl<'a> Widget for Editor<'a> {
 
         let mode_span = Span::styled(self.block_info, info_style);
         let key_hint_span = Span::styled(
-            " <Alt-q> quit | <Alt-/s/l/n/d> save/load/new/delete note | <Alt-t> edit title ",
+            " | <Alt-q> quit | <Alt-/s/l/n/d> save/load/new/delete | <Alt-t> edit title | ",
             key_hint_style,
         );
 
-        let (top_right, bottom_right) = match self.sidebar_open {
-            true => ("┬", "┴"),
-            false => ("╮", "╯"),
+        let top_right = match self.sidebar_open {
+            true => "┬",
+            false => "╮",
         };
 
         let title_text = format!(" {} ", self.title);
@@ -979,8 +979,8 @@ impl<'a> Widget for Editor<'a> {
             .border_set(border::Set {
                 top_left: "╭",
                 top_right,
-                bottom_left: "╰",
-                bottom_right,
+                bottom_left: "├",
+                bottom_right: "┤",
                 vertical_left: "│",
                 vertical_right: "│",
                 horizontal_top: "─",
