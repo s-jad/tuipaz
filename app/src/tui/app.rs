@@ -14,7 +14,7 @@ use super::{
     note_list::{NoteList, NoteListAction, NoteListMode},
     ui::ui,
     user_messages::UserMessage,
-    utils::Tui,
+    utils::Tui, searchbar::Searchbar,
 };
 
 #[derive(PartialEq, Debug, Default, Clone, Copy)]
@@ -36,6 +36,7 @@ pub(crate) enum ComponentState {
 pub(crate) enum ActiveWidget {
     Editor,
     Sidebar,
+    Searchbar,
     NoteList,
     NoteTitleInput,
 }
@@ -58,6 +59,12 @@ pub(crate) enum SidebarState {
     Hidden(u16),
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SearchbarState {
+    Open,
+    Hidden,
+}
+
 #[derive(Debug)]
 pub(crate) struct App<'a> {
     pub(crate) state: AppState,
@@ -70,8 +77,10 @@ pub(crate) struct App<'a> {
     pub(crate) btn_idx: usize,
     pub(crate) user_input: UserInput<'a>,
     pub(crate) user_msg: UserMessage,
-    pub(crate) sidebar: SidebarState,
+    pub(crate) sidebar_state: SidebarState,
     pub(crate) sidebar_size: u16,
+    pub(crate) searchbar: Searchbar<'a>,
+    pub(crate) searchbar_state: SearchbarState,
     pub(crate) pending_link: Option<TextAreaLink>,
     pub(crate) active_widget: Option<ActiveWidget>,
 }
@@ -111,8 +120,10 @@ impl<'a> App<'a> {
             btn_idx: 0,
             user_input: UserInput::new(ComponentState::Active, InputAction::Note),
             user_msg: UserMessage::welcome(),
-            sidebar: SidebarState::Open,
+            sidebar_state: SidebarState::Open,
             sidebar_size: 20,
+            searchbar: Searchbar::new(true, ComponentState::Inactive),
+            searchbar_state: SearchbarState::Open,
             pending_link: None,
             active_widget: None,
         }
@@ -136,6 +147,10 @@ impl<'a> App<'a> {
                 self.editor.set_state(ComponentState::Inactive);
                 self.note_list.set_state(ComponentState::Active);
             },
+            ActiveWidget::Searchbar => {
+                self.editor.set_state(ComponentState::Active);
+                self.note_list.set_state(ComponentState::Inactive);
+            }
 
         }
         self.active_widget = Some(active);
