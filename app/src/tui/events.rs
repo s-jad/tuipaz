@@ -179,9 +179,10 @@ impl Events {
                         app.prev_screen = app.current_screen;
                         app.current_screen = Screen::NewLinkedNote;
                         app.user_input.set_action(InputAction::LinkedNote);
-                        app.active_widget = Some(ActiveWidget::NoteTitleInput);
                         app.user_input.set_state(ComponentState::Active);
+                        app.active_widget = Some(ActiveWidget::NoteTitleInput);
                         app.note_list.set_state(ComponentState::Inactive);
+                        app.note_list.set_mode(NoteListMode::Fullscreen);
                         app.editor.body.new_link = false;
                     }
                 }
