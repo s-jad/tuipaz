@@ -505,19 +505,19 @@ impl Events {
                     app.editor.note_id = Some(parent_id);
                 }
 
-                match has_links {
+                let updated_links = app
+                    .editor
+                    .links
+                    .clone()
+                    .into_values()
+                    .filter(|link| link.updated || !link.saved)
+                    .map(|link| link.to_db_link())
+                    .collect::<Vec<DbNoteLink>>();
+
+                match has_links && !updated_links.is_empty() {
                     true => {
-                        let db_links = app
-                            .editor
-                            .links
-                            .clone()
-                            .into_values()
-                            .filter(|link| link.updated || !link.saved)
-                            .map(|link| link.to_db_link())
-                            .collect::<Vec<DbNoteLink>>();
-                        
-                        info!("save_note::db_links: {:?}", db_links);
-                        let result = DbMac::save_links(&app.db, db_links, parent_id).await;
+                        info!("save_note::db_links: {:?}", updated_links);
+                        let result = DbMac::save_links(&app.db, updated_links, parent_id).await;
                         match result {
                             Ok(_) => {
                                 app.user_msg = UserMessage::new(
