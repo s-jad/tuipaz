@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use color_eyre::eyre::{Context, Result};
+use log::info;
 use sqlx::{Pool, Sqlite};
 
 use crate::db::db_mac::NoteIdentifier;
@@ -123,17 +124,18 @@ impl<'a> App<'a> {
             sidebar_state: SidebarState::Open,
             sidebar_size: 20,
             searchbar: Searchbar::new(true, ComponentState::Inactive),
-            searchbar_state: SearchbarState::Open,
+            searchbar_state: SearchbarState::Hidden,
             pending_link: None,
             active_widget: None,
         }
     }
 
     pub(crate) fn set_active_widget(&mut self, active: ActiveWidget) {
+        info!("set_active_widget::active: {:?}", active);
         match active {
             ActiveWidget::NoteList => {
-                self.user_input.set_state(ComponentState::Inactive);
                 self.note_list.set_state(ComponentState::Active);
+                self.user_input.set_state(ComponentState::Inactive);
             }
             ActiveWidget::NoteTitleInput => {
                 self.user_input.set_state(ComponentState::Active);
@@ -141,13 +143,16 @@ impl<'a> App<'a> {
             }
             ActiveWidget::Editor => {
                 self.editor.set_state(ComponentState::Active);
+                self.searchbar.set_state(ComponentState::Inactive);
                 self.note_list.set_state(ComponentState::Inactive);
             },
             ActiveWidget::Sidebar => {
-                self.editor.set_state(ComponentState::Inactive);
                 self.note_list.set_state(ComponentState::Active);
+                self.editor.set_state(ComponentState::Inactive);
+                self.searchbar.set_state(ComponentState::Inactive);
             },
             ActiveWidget::Searchbar => {
+                self.searchbar.set_state(ComponentState::Active);
                 self.editor.set_state(ComponentState::Active);
                 self.note_list.set_state(ComponentState::Inactive);
             }
