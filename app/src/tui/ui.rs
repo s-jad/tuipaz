@@ -1,12 +1,13 @@
 use log::info;
+use crate::tui::utils::log_format;
+
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style},
     text::Text,
     widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
-    Frame, symbols,
+    Frame,
 };
-use crate::tui::{utils::log_format, app::SidebarState};
 
 use super::{
     app::{App, Screen, SearchbarState},
