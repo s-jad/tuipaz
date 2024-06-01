@@ -145,7 +145,7 @@ impl<'a> Editor<'a> {
             cmd_buf: String::with_capacity(6),
             cmd_state: CommandState::NoCommand,
             sidebar_open: true,
-            searchbar_open: true,
+            searchbar_open: false,
             state: ComponentState::Active,
         }
     }
@@ -959,11 +959,21 @@ impl<'a> Widget for Editor<'a> {
             _ => (Style::default(), Style::default(), Style::default())
         };
 
-        let mode_span = Span::styled(self.block_info, info_style);
-        let key_hint_span = Span::styled(
-            " | <Alt-q> quit | <Alt-/s/l/n/d> save/load/new/delete | <Alt-t> edit title | ",
-            key_hint_style,
-        );
+
+        let (mode_span, key_hint_span) = match self.searchbar_open {
+            true => {
+                (Span::styled("", Style::default()), Span::styled("", key_hint_style))
+            },
+            false => {
+                (
+                    Span::styled(self.block_info, info_style),
+                    Span::styled(
+                        " | <Alt-q> quit | <Alt-/s/l/n/d> save/load/new/delete | <Alt-t> edit title | ",
+                        key_hint_style,
+                    ),
+                )
+            },
+        };
 
         let (cursor_style, top_right, bottom_left, bottom_right) = match (self.sidebar_open, self.searchbar_open) {
             (true, true) => (Style::default(), "┬", "├", "┤"),

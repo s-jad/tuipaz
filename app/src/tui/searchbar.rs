@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use log::info;
-use ratatui::{widgets::{Borders, Block, Padding, Widget}, symbols, style::{Modifier, Style}};
+use ratatui::{widgets::{Borders, Block, Padding, Widget}, symbols, style::{Modifier, Style, Color}, text::{Span, Line}};
 use tuipaz_textarea::{TextArea, CursorMove};
 
 use super::app::ComponentState;
@@ -30,7 +30,6 @@ impl<'a> Searchbar<'a> {
     }
 
     pub(crate) fn search(&mut self) {
-        info!("Searching for {:?}", self.input.lines()[0]);
         self.input.clear_lines();
         self.input.move_cursor(CursorMove::Head);
     }
@@ -46,13 +45,28 @@ impl<'a> Widget for Searchbar<'a> {
             false => "╯",
         };
 
-        let cursor_style = match self.state {
-            ComponentState::Active => Style::default().add_modifier(Modifier::REVERSED),
-            ComponentState::Inactive => Style::default(),
-            _ => Style::default(),
+
+        let (mode_span, key_hint_span, cursor_style) = match self.state {
+            ComponentState::Active => (
+                Span::styled(" <| SEARCH |> ", Style::default().add_modifier(Modifier::BOLD).fg(Color::Green)),
+                Span::styled(
+                    " | <Alt-q> quit | <Alt-/s/l/n/d> save/load/new/delete | <Alt-t> edit title | ",
+                    Style::default().add_modifier(Modifier::BOLD),
+                ),
+                Style::default().add_modifier(Modifier::REVERSED),
+            ),
+            _ => (
+                Span::styled("", Style::default()),
+                Span::styled(
+                    "",
+                    Style::default(),
+                ),
+                Style::default(),
+            ),
         };
 
         let search_block = Block::default()
+            .title_bottom(Line::from(vec![mode_span, key_hint_span]))
             .borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)
             .border_set(symbols::border::Set {
                 top_left: " ",
