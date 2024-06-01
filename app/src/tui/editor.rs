@@ -103,7 +103,7 @@ pub(crate) enum CommandState {
     GoTo,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum EditorMode {
     Insert,
     Normal,
@@ -131,31 +131,6 @@ impl<'a> Editor<'a> {
         body.set_max_histories(1000);
 
         let block_info = " <| NORMAL |> ".to_string();
-        let info_style = Style::default().bold().fg(Color::Yellow);
-        let mode_span = Span::styled(block_info.clone(), info_style);
-        let key_hint_span = Span::styled(
-            " <Alt-q/s/l/n> Quit/Save/Load/New <Alt-t> Edit title ",
-            Style::default(),
-        );
-
-        let editor_block = Block::default()
-            .title(Title::from(title.clone()))
-            .title_style(Style::default().add_modifier(Modifier::BOLD))
-            .borders(Borders::ALL)
-            .border_set(border::Set {
-                top_left: "╭",
-                top_right: "┬",
-                bottom_left: "╰",
-                bottom_right: "┴",
-                vertical_left: "│",
-                vertical_right: "│",
-                horizontal_top: "─",
-                horizontal_bottom: "─",
-            })
-            .padding(Padding::new(1, 1, 1, 1))
-            .title_bottom(Line::from(vec![mode_span, key_hint_span]));
-
-        body.set_block(editor_block.clone());
 
         Self {
             title,
@@ -944,6 +919,8 @@ impl<'a> Widget for Editor<'a> {
             EditorMode::Visual => Style::default().bold().fg(Color::Red),
         };
 
+        info!("impl Widget for Editor::self.state: {:?}", self.state);
+
         let (title_style, key_hint_style, text_style) = match self.state {
             ComponentState::Active => (
                 Style::default().bold().fg(Color::Yellow),
@@ -964,9 +941,11 @@ impl<'a> Widget for Editor<'a> {
             key_hint_style,
         );
 
-        let top_right = match self.sidebar_open {
-            true => "┬",
-            false => "╮",
+        let (cursor_style, top_right, bottom_left, bottom_right) = match (self.sidebar_open, self.searchbar_open) {
+            (true, true) => (Style::default(), "┬", "├", "┤"),
+            (false, true) => (Style::default(), "╮", "├", "┤"),
+            (true, false) => (Style::default().add_modifier(Modifier::REVERSED), "┬", "╰","┴"),
+            (false, false) => (Style::default().add_modifier(Modifier::REVERSED), "╮", "╰", "╯"),
         };
 
         let title_text = format!(" {} ", self.title);
@@ -979,8 +958,8 @@ impl<'a> Widget for Editor<'a> {
             .border_set(border::Set {
                 top_left: "╭",
                 top_right,
-                bottom_left: "├",
-                bottom_right: "┤",
+                bottom_left,
+                bottom_right,
                 vertical_left: "│",
                 vertical_right: "│",
                 horizontal_top: "─",
@@ -990,6 +969,7 @@ impl<'a> Widget for Editor<'a> {
 
         self.body.set_block(editor_block);
         self.body.set_style(text_style);
+        self.body.set_cursor_style(cursor_style);
 
         self.body.widget().render(area, buf);
     }
