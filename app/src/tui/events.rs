@@ -10,7 +10,7 @@ use crate::{db::db_mac::{DbMac, DbNoteLink, NoteIdentifier}, tui::utils::log_for
 use super::{
     app::{ActiveWidget, App, AppState, Screen, SidebarState, ComponentState, SearchbarState},
     buttons::ButtonAction,
-    editor::{Editor, Link},
+    editor::{Editor, Link, EditorMode},
     inputs::{InputAction, UserInput},
     user_messages::{MessageType, UserMessage}, note_list::{NoteListMode, NoteListAction},
 };
@@ -123,6 +123,16 @@ impl Events {
                         MessageType::Warning,
                         None,
                     );
+                }
+                Input {
+                    key: Key::Char('/'),
+                    ..
+                } => {
+                    if app.editor.mode == EditorMode::Normal {
+                        Self::toggle_searchbar(app);
+                    } else {
+                        app.editor.handle_input(input);
+                    }
                 }
                 Input {
                     key: Key::Char('f'),
@@ -796,12 +806,12 @@ impl Events {
             SearchbarState::Open => {
                 app.searchbar_state = SearchbarState::Hidden;
                 app.editor.searchbar_open = false;
-                app.active_widget = Some(ActiveWidget::Searchbar);
+                app.set_active_widget(ActiveWidget::Editor);
             }
             SearchbarState::Hidden => {
                 app.searchbar_state = SearchbarState::Open;
                 app.editor.searchbar_open = true;
-                app.active_widget = Some(ActiveWidget::Editor);
+                app.set_active_widget(ActiveWidget::Searchbar);
             }
         }
     }
@@ -813,14 +823,14 @@ impl Events {
                 app.sidebar_size = 0;
                 app.editor.sidebar_open = false;
                 app.searchbar.sidebar_open = false;
-                app.active_widget = Some(ActiveWidget::Sidebar);
+                app.set_active_widget(ActiveWidget::Editor);
             }
             SidebarState::Hidden(n) => {
                 app.sidebar_size = n;
                 app.sidebar_state = SidebarState::Open;
                 app.editor.sidebar_open = true;
                 app.searchbar.sidebar_open = true;
-                app.active_widget = Some(ActiveWidget::Editor);
+                app.set_active_widget(ActiveWidget::Sidebar);
             }
         }
     }
