@@ -158,6 +158,7 @@ impl<'a> Editor<'a> {
         self.block_info = match mode {
             EditorMode::Insert => {
                 self.body.cancel_selection();
+                self.body.clear_search();
                 " <| INSERT |> ".to_owned()
             }
             EditorMode::Normal => {
@@ -166,6 +167,7 @@ impl<'a> Editor<'a> {
             }
             EditorMode::Visual => {
                 self.body.start_selection();
+                self.body.clear_search();
                 " <| VISUAL |> ".to_owned()
             }
         };

@@ -28,6 +28,11 @@ impl<'a> Searchbar<'a> {
     pub(crate) fn set_state(&mut self, new_state: ComponentState) {
         self.state = new_state;
     }
+
+    pub(crate) fn search(&mut self) {
+        info!("Searching for {:?}", self.input.lines()[0]);
+        self.input.clear_lines();
+    }
 }
 
 impl<'a> Widget for Searchbar<'a> {
