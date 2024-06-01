@@ -421,6 +421,28 @@ impl<'a> Editor<'a> {
                     self.body.insert_newline();
                     self.set_mode(EditorMode::Insert);
                 }
+                (
+                    Input {
+                        key: Key::Char('n'),
+                        shift: false,
+                        alt: false,
+                        ..
+                    },
+                    _,
+                ) => {
+                    self.body.search_forward(false);
+                }
+                (
+                    Input {
+                        key: Key::Char('N'),
+                        shift: true,
+                        alt: false,
+                        ..
+                    },
+                    _,
+                ) => {
+                    self.body.search_back(false);
+                }
                 // Switch modes
                 (
                     Input {
