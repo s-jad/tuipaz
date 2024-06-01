@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use ratatui::{widgets::{Borders, Block, Padding, Widget}, symbols};
+use log::info;
+use ratatui::{widgets::{Borders, Block, Padding, Widget}, symbols, style::{Modifier, Style}};
 use tuipaz_textarea::TextArea;
 
 use super::app::ComponentState;
@@ -14,35 +15,18 @@ pub(crate) struct Searchbar<'a> {
 
 impl<'a> Searchbar<'a> {
     pub(crate) fn new(sidebar_open: bool, state: ComponentState) -> Self {
-
-        let bottom_right = match sidebar_open {
-            true => "┴",
-            false => "╯",
-        };
-
-        let search_block = Block::default()
-            .borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)
-            .border_set(symbols::border::Set {
-                top_left: " ",
-                top_right: " ",
-                bottom_left: "╰",
-                bottom_right,
-                vertical_left: "│",
-                vertical_right: "│",
-                horizontal_bottom: "─",
-                horizontal_top: " ",
-            })
-            .padding(Padding::new(0, 0, 1, 1));
-
         let mut input = TextArea::new(vec!["".to_owned()], HashMap::new());
         input.set_placeholder_text("Search...");
-        input.set_block(search_block);
 
         Self {
             input,
             sidebar_open,
             state
         }
+    }
+
+    pub(crate) fn set_state(&mut self, new_state: ComponentState) {
+        self.state = new_state;
     }
 }
 
@@ -56,6 +40,12 @@ impl<'a> Widget for Searchbar<'a> {
             false => "╯",
         };
 
+        let cursor_style = match self.state {
+            ComponentState::Active => Style::default().add_modifier(Modifier::REVERSED),
+            ComponentState::Inactive => Style::default(),
+            _ => Style::default(),
+        };
+
         let search_block = Block::default()
             .borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)
             .border_set(symbols::border::Set {
@@ -68,9 +58,11 @@ impl<'a> Widget for Searchbar<'a> {
                 horizontal_bottom: "─",
                 horizontal_top: " ",
             })
-            .padding(Padding::new(0, 0, 1, 1));
+            .padding(Padding { left: 1, right: 1, top: 0, bottom: 0 });
 
         self.input.set_block(search_block);
+        self.input.set_cursor_style(cursor_style);
+        self.input.set_placeholder_text("Search...");
 
         self.input.widget().render(area, buf);
     }
