@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use log::info;
 use ratatui::{widgets::{Borders, Block, Padding, Widget}, symbols, style::{Modifier, Style}};
-use tuipaz_textarea::TextArea;
+use tuipaz_textarea::{TextArea, CursorMove};
 
 use super::app::ComponentState;
 
@@ -32,6 +32,7 @@ impl<'a> Searchbar<'a> {
     pub(crate) fn search(&mut self) {
         info!("Searching for {:?}", self.input.lines()[0]);
         self.input.clear_lines();
+        self.input.move_cursor(CursorMove::Head);
     }
 }
 
