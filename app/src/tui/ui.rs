@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use log::info;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
@@ -8,12 +6,10 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
     Frame, symbols,
 };
-use tuipaz_textarea::TextArea;
-
 use crate::tui::{utils::log_format, app::SidebarState};
 
 use super::{
-    app::{App, Screen},
+    app::{App, Screen, SearchbarState},
     user_messages::centered_rect,
 };
 
@@ -86,12 +82,17 @@ fn render_main_screen(app: &mut App, frame: &mut Frame) {
             Constraint::Percentage(app.sidebar_size),
         ])
         .split(area);
+    
+    let searchbar_size = match app.searchbar_state {
+        SearchbarState::Open => 8,
+        SearchbarState::Hidden => 0,
+    };
 
     let v_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage(94),
-            Constraint::Percentage(6),
+            Constraint::Percentage(100 - searchbar_size),
+            Constraint::Percentage(searchbar_size),
         ])
         .split(h_layout[0]);
 
