@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use color_eyre::eyre::{Context, Result};
 use crossterm::event::{self, Event, KeyEventKind};
-use log::info;
+use log::{info, error};
 use tuipaz_textarea::{Input, Key};
 
 use crate::{db::db_mac::{DbMac, DbNoteLink, NoteIdentifier}, tui::utils::log_format};
@@ -230,6 +230,10 @@ impl Events {
                             let id = app.note_list.note_identifiers[note_idx].id;
                             Self::load_note(app, id).await?;
                         },
+                        Some(ActiveWidget::Searchbar) => {
+                            app.searchbar.search();
+                            Self::toggle_searchbar(app);
+                        },
                         Some(_) | None => {},
                 }
                 Input {
@@ -246,18 +250,29 @@ impl Events {
                         Some(ActiveWidget::Sidebar) => app.note_list.next(),
                         Some(_) | None => {},
                 }
-                input => {
-                    app.editor.handle_input(input);
-                    
-                    if let Some(key) = DELETE_KEYS.iter().find(|&&k| k == input.key) {
-                        let link_deleted = Self::check_link_deletion(app, key).await;
-                        info!("link_deleted: {:?}", link_deleted);
-                        link_deleted?
-                    }
-                    
-                    if !app.editor.links.is_empty() {
-                        Self::check_link_moved(app);
-                    }
+                input => match app.active_widget {
+                        Some(ActiveWidget::Editor) => {
+                            app.editor.handle_input(input);
+
+                            if let Some(key) = DELETE_KEYS.iter().find(|&&k| k == input.key) {
+                                let link_deleted = Self::check_link_deletion(app, key).await;
+                                info!("link_deleted: {:?}", link_deleted);
+                                link_deleted?
+                            }
+
+                            if !app.editor.links.is_empty() {
+                                Self::check_link_moved(app);
+                            }
+                        },
+                        Some(ActiveWidget::Searchbar) => {
+                            app.searchbar.input.input(input);
+                            let search_pattern = &app.searchbar.input.lines()[0];
+                            match app.editor.body.set_search_pattern(search_pattern) {
+                                Ok(_) => info!("Searching for {:?}", search_pattern),
+                                Err(e) => error!("Error searching for {:?}: {:?}", search_pattern, e),
+                            }
+                        }
+                        Some(_) | None => {},
                 }
             },
             Screen::NewNote => match input {
