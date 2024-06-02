@@ -82,7 +82,7 @@ impl<'a> Widget for Searchbar<'a> {
 
         self.input.set_block(search_block);
         self.input.set_cursor_style(cursor_style);
-        self.input.set_placeholder_text("Search...");
+        self.input.set_placeholder_text("...");
 
         self.input.widget().render(area, buf);
     }
