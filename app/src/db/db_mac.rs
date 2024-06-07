@@ -1,4 +1,6 @@
 use color_eyre::eyre::{eyre, Result};
+use crossterm::ExecutableCommand;
+use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::{QueryBuilder, SqlitePool};
 
@@ -87,34 +89,6 @@ impl DbMac {
         }
     }
 
-    pub(crate) async fn save_links(
-        db: &SqlitePool,
-        links: Vec<DbNoteLink>,
-        parent_note_id: i64,
-    ) -> Result<()> {
-        let mut query_builder = QueryBuilder::new(
-            "INSERT INTO links 
-                (textarea_id, textarea_row, start_col, end_col, parent_note_id, linked_note_id) ",
-        );
-
-        query_builder.push_values(links.into_iter(), |mut b, link| {
-            b.push_bind(link.textarea_id)
-                .push_bind(link.textarea_row)
-                .push_bind(link.start_col)
-                .push_bind(link.end_col)
-                .push_bind(parent_note_id)
-                .push_bind(link.linked_note_id);
-        });
-
-        let query = query_builder.build();
-
-        let result = query.execute(db).await;
-
-        match result {
-            Ok(_) => Ok(()),
-            Err(e) => Err(eyre!("Failed to save links: {:?}", e)),
-        }
-    }
 
     pub(crate) async fn update_note(
         db: &SqlitePool,
@@ -210,7 +184,70 @@ impl DbMac {
         }
     }
 
-    pub(crate) async fn delete_links(db: &SqlitePool, link_identifiers: Vec<(i64, i64)>) -> Result<()> {
+    pub(crate) async fn update_links(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, 
+        db: &SqlitePool,
+        links: Vec<DbNoteLink>,
+        parent_note_id: i64,
+    ) -> Result<()> {
+        for link in links {
+            let result = sqlx::query!(
+                "UPDATE links 
+                SET textarea_row =?, start_col =?, end_col =?
+                WHERE parent_note_id =? AND linked_note_id =? AND textarea_id =?;",
+                link.textarea_row, 
+                link.start_col, 
+                link.end_col, 
+                parent_note_id, 
+                link.linked_note_id, 
+                link.textarea_id,
+            )
+            .execute(db)
+            .await;
+
+            if let Err(e) = result {
+                return Err(eyre!("Failed to update link: {:?}", e))
+            }
+
+        }
+        Ok(())
+    }
+
+    pub(crate) async fn save_links(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, 
+        db: &SqlitePool,
+        links: Vec<DbNoteLink>,
+        parent_note_id: i64,
+    ) -> Result<()> {
+        let mut query_builder = QueryBuilder::new(
+            "INSERT INTO links 
+                (textarea_id, textarea_row, start_col, end_col, parent_note_id, linked_note_id) ",
+        );
+
+        query_builder.push_values(links.into_iter(), |mut b, link| {
+            b.push_bind(link.textarea_id)
+                .push_bind(link.textarea_row)
+                .push_bind(link.start_col)
+                .push_bind(link.end_col)
+                .push_bind(parent_note_id)
+                .push_bind(link.linked_note_id);
+        });
+
+        let query = query_builder.build();
+
+        let result = query.execute(db).await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => Err(eyre!("Failed to save links: {:?}", e)),
+        }
+    }
+
+    pub(crate) async fn delete_links(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, 
+        db: &SqlitePool, 
+        link_identifiers: Vec<(i64, i64)>
+    ) -> Result<()> {
         let where_clause = link_identifiers.iter().map(|&(parent_note_id, textarea_id)| {
             format!("(parent_note_id ={} AND textarea_id ={})", parent_note_id, textarea_id)
         }).collect::<Vec<_>>().join(" OR ");
