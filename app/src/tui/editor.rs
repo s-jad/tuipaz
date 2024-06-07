@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, cmp::Ordering};
 
 use log::info;
 use ratatui::{
@@ -23,7 +23,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) note_id: Option<i64>,
     pub(crate) body: TextArea<'a>,
     pub(crate) links: HashMap<i64, Link>,
-    pub(crate) deleted_link_ids: Vec<(i64, i64)>,
+    pub(crate) deleted_link_ids: Vec<i64>,
     pub(crate) mode: EditorMode,
     pub(crate) block_info: String,
     pub(crate) prev_cursor: CursorPosition,
@@ -45,6 +45,7 @@ pub(crate) struct Link {
     pub(crate) end_col: usize,
     pub(crate) saved: bool,
     pub(crate) updated: bool,
+    pub(crate) deleted: bool,
 }
 
 impl Link {
@@ -58,6 +59,7 @@ impl Link {
             end_col: db_link.end_col as usize,
             saved: true,
             updated: false,
+            deleted: false,
         }
     }
 
@@ -78,6 +80,8 @@ impl Link {
             row: self.row,
             start_col: self.start_col,
             end_col: self.end_col,
+            edited: false,
+            deleted: self.deleted,
         }
     }
 
@@ -117,13 +121,10 @@ impl<'a> Editor<'a> {
         links: HashMap<i64, Link>,
         note_id: Option<i64>,
     ) -> Self {
-        info!("Editor::new()::param::links: {:?}", links);
         let ta_links = links
             .values()
             .map(|link| (link.text_id as usize, link.to_textarea_link()))
             .collect::<HashMap<usize,TextAreaLink>>();
-
-        info!("Editor::new()::ta_links: {:?}", ta_links);
 
         let mut body = TextArea::new(body, ta_links);
         body.set_cursor_line_style(Style::default());
@@ -930,6 +931,11 @@ impl<'a> Editor<'a> {
                 acc
             }) as u16
     }
+
+    pub fn cmp_links(&self) -> Ordering {
+        self.links.iter().filter(|(_, l)| !l.deleted).count()
+            .cmp(&self.body.links.iter().filter(|(_, l)| !l.deleted).count())
+    }
 }
 
 impl<'a> Widget for Editor<'a> {
@@ -942,8 +948,6 @@ impl<'a> Widget for Editor<'a> {
             EditorMode::Normal => Style::default().bold().fg(Color::Yellow),
             EditorMode::Visual => Style::default().bold().fg(Color::Red),
         };
-
-        info!("impl Widget for Editor::self.state: {:?}", self.state);
 
         let (title_style, key_hint_style, text_style) = match self.state {
             ComponentState::Active => (
