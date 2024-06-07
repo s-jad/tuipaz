@@ -1,11 +1,11 @@
 use std::collections::HashMap;
-
-use color_eyre::eyre::{Context, Result};
+use std::cmp;
+use color_eyre::eyre::{Context, Result, eyre};
 use crossterm::event::{self, Event, KeyEventKind};
 use log::{info, error};
 use tuipaz_textarea::{Input, Key};
 
-use crate::{db::db_mac::{DbMac, DbNoteLink, NoteIdentifier}, tui::utils::log_format};
+use crate::db::db_mac::{DbMac, DbNoteLink, NoteIdentifier};
 
 use super::{
     app::{ActiveWidget, App, AppState, Screen, SidebarState, ComponentState, SearchbarState},
@@ -148,7 +148,7 @@ impl Events {
                 } => {
                     match app.sidebar_state {
                         SidebarState::Open => {
-                            app.sidebar_size = std::cmp::min(app.sidebar_size + 2, 70);
+                            app.sidebar_size = cmp::min(app.sidebar_size + 2, 70);
                         },
                         SidebarState::Hidden(_) => {},
                     }
@@ -160,7 +160,7 @@ impl Events {
                 } => {
                     match app.sidebar_state {
                         SidebarState::Open => {
-                            app.sidebar_size = std::cmp::max(app.sidebar_size - 2, 12);
+                            app.sidebar_size = cmp::max(app.sidebar_size - 2, 12);
                         },
                         SidebarState::Hidden(_) => {},
                     }
@@ -253,11 +253,13 @@ impl Events {
                 input => match app.active_widget {
                         Some(ActiveWidget::Editor) => {
                             app.editor.handle_input(input);
-
+                            
                             if let Some(key) = DELETE_KEYS.iter().find(|&&k| k == input.key) {
-                                let link_deleted = Self::check_link_deletion(app, key).await;
-                                info!("link_deleted: {:?}", link_deleted);
-                                link_deleted?
+                                Self::check_link_deletion(app, key);
+                            }
+
+                            if input.key == Key::Char('u') || input.key == Key::Char('r') {
+                                Self::check_link_edits(app);
                             }
 
                             if !app.editor.links.is_empty() {
@@ -483,6 +485,9 @@ impl Events {
             ),
         };
 
+        info!("save_note::updated: {:?}", updated);
+        info!("save_note::save_note_result: {:?}", save_note_result);
+
         match save_note_result {
             Ok(parent_id) => {
                 if updated {
@@ -504,21 +509,12 @@ impl Events {
                     // Triggers update_note on next save
                     app.editor.note_id = Some(parent_id);
                 }
-
-                let updated_links = app
-                    .editor
-                    .links
-                    .clone()
-                    .into_values()
-                    .filter(|link| link.updated || !link.saved)
-                    .map(|link| link.to_db_link())
-                    .collect::<Vec<DbNoteLink>>();
-
-                match has_links && !updated_links.is_empty() {
+                
+                match has_links {
                     true => {
-                        info!("save_note::db_links: {:?}", updated_links);
-                        let result = DbMac::save_links(&app.db, updated_links, parent_id).await;
-                        match result {
+                        let sync_db_links_result = Self::sync_db_links(app).await;
+                        info!("sync_db_links_result: {:?}", sync_db_links_result);
+                        match sync_db_links_result {
                             Ok(_) => {
                                 app.user_msg = UserMessage::new(
                                     "Note saved!".to_string(),
@@ -546,7 +542,7 @@ impl Events {
                                 Err(err)
                             }
                         }
-                    }
+                    }   
                     false => {
                         app.user_msg = UserMessage::new(
                             "Note saved!".to_string(),
@@ -569,6 +565,146 @@ impl Events {
                 app.current_screen = Screen::Popup;
                 Err(err)
             }
+        }
+    }
+    
+    fn check_links_to_update(link: &&Link) -> bool {
+        !link.deleted && link.saved && link.updated
+    }
+
+    fn check_links_to_save(link: &&Link) -> bool {
+        !link.deleted && !link.saved
+    }
+
+    fn check_links_to_delete(link: &&Link) -> bool {
+        link.deleted && link.saved
+    }
+
+    async fn update_links(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, app: &mut App<'_>) -> Result<()> {
+        let links_to_update = app
+            .editor
+            .links
+            .values()
+            .filter(Self::check_links_to_update)
+            .map(|link| link.to_db_link())
+            .collect::<Vec<DbNoteLink>>();
+        
+        info!("update_links::editor.links: {:?}", app.editor.links);
+        info!("update_links::links_to_update: {:?}", links_to_update);
+
+        if !links_to_update.is_empty() {
+            DbMac::update_links(tx, &app.db, links_to_update, app.editor.note_id.expect("Note should have an id")).await?
+        }
+
+        Ok(())
+    }
+
+    async fn save_links(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, app: &mut App<'_>) -> Result<()> {
+        let links_to_save = app
+            .editor
+            .links
+            .values()
+            .filter(Self::check_links_to_save)
+            .map(|link| link.to_db_link())
+            .collect::<Vec<DbNoteLink>>();
+        
+        info!("save_links::editor.links: {:?}", app.editor.links);
+        info!("save_links::links_to_save: {:?}", links_to_save);
+
+        if !links_to_save.is_empty() {
+            DbMac::save_links(tx, &app.db, links_to_save, app.editor.note_id.expect("Note should have an id")).await?
+        }
+
+        Ok(())
+    }
+
+    async fn delete_links(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, app: &mut App<'_>) -> Result<()> {
+        let parent_note_id = app.editor.note_id.expect("Note should have an id");
+
+        let links_to_delete = app
+            .editor
+            .links
+            .values()
+            .filter(Self::check_links_to_delete)
+            .map(|link| (parent_note_id, link.text_id))
+            .collect::<Vec<(i64, i64)>>();
+        
+        info!("delete_links::editor.links: {:?}", app.editor.links);
+        info!("delete_links::links_to_delete: {:?}", links_to_delete);
+
+        if !links_to_delete.is_empty() {
+            DbMac::delete_links(tx, &app.db, links_to_delete).await?
+        }
+
+        Ok(())
+    }
+
+    async fn sync_db_links(
+        app: &mut App<'_>, 
+    ) -> Result<()> {
+        let mut tx = app.db.begin().await?;
+
+        let update_links_result = Self::update_links(&mut tx, app).await;
+        let save_links_result = Self::save_links(&mut tx, app).await;
+        let delete_links_result = Self::delete_links(&mut tx, app).await;
+        info!("update_links_result: {:?}", update_links_result);
+        info!("save_links_result: {:?}", save_links_result);
+        info!("delete_links_result: {:?}", delete_links_result);
+
+        match (save_links_result, delete_links_result, update_links_result) {
+            (Ok(_), Ok(_), Ok(_)) => {
+                tx.commit().await?;
+                return Ok(());
+            },
+            (Err(se), Ok(_), Ok(_)) =>{
+                tx.rollback().await?;
+                return Err(eyre!("Transaction error::update_links: {:?}", se));
+            },
+            (Ok(_), Err(de), Ok(_)) => {
+                tx.rollback().await?;
+                return Err(eyre!("Transaction error::delete_links: {:?}", de));
+            },
+            (Ok(_), Ok(_), Err(ue)) => {
+                tx.rollback().await?;
+                return Err(eyre!("Transaction error::update_links: {:?}", ue));
+            },
+            (Err(se), Err(de), Ok(_)) =>{
+                tx.rollback().await?;
+                return Err(eyre!(
+                    "Transaction errors\n
+                    save_links: {:?}\n
+                    delete_links: {:?}",
+                    se, de)
+                );
+            },
+            (Ok(_), Err(de), Err(ue)) =>{
+                tx.rollback().await?;
+                return Err(eyre!(
+                    "Transaction errors\n
+                    delete_links: {:?}\n
+                    update_links: {:?}",
+                    de, ue)
+                );
+             },
+            (Err(se), Ok(_), Err(ue)) =>{
+                tx.rollback().await?;
+                return Err(eyre!(
+                    "Transaction errors\n
+                    save_links: {:?}\n
+                    update_links: {:?}",
+                    se, ue)
+                );
+             },
+            (Err(se), Err(de), Err(ue)) =>{
+                tx.rollback().await?;
+                return Err(eyre!(
+                    "Transaction errors\n
+                    save_links: {:?}\n
+                    delete_links: {:?}\n
+                    update_links: {:?}",
+                    se, de, ue)
+                );
+             },
         }
     }
 
@@ -620,16 +756,14 @@ impl Events {
     }
 
     fn switch_btns(app: &mut App) {
-        match app.current_btn().get_state() {
-            ComponentState::Unavailable => {}
-            _ => app.current_btn().set_state(ComponentState::Inactive),
+        if app.current_btn().get_state() != ComponentState::Unavailable {
+            app.current_btn().set_state(ComponentState::Inactive);
         }
 
         app.btn_idx = (app.btn_idx + 1) % app.btns.len();
 
-        match app.current_btn().get_state() {
-            ComponentState::Unavailable => {}
-            _ => app.current_btn().set_state(ComponentState::Active),
+        if app.current_btn().get_state() != ComponentState::Unavailable {
+            app.current_btn().set_state(ComponentState::Active);
         }
     }
 
@@ -720,8 +854,6 @@ impl Events {
     }
 
     fn link_note(app: &mut App, linked_id: i64) {
-        info!("INSIDE LINK NOTE");
-        info!("{}", log_format(&app.editor.links, "app.editor.links before"));
         let textarea_link = app
             .pending_link
             .expect("Should be a pending link if we reached this far");
@@ -742,19 +874,25 @@ impl Events {
             end_col: textarea_link.end_col,
             saved: false,
             updated: false,
+            deleted: false,
         };
-
-        app.editor.links.insert(new_link.text_id, new_link);
+        
+        let link_id = new_link.text_id;
+        app.editor.links.insert(link_id, new_link);
         app.switch_to_main();
         app.editor.body.new_link = false;
-        info!("{}", log_format(&app.editor.links, "app.editor.links after"));
     }
 
+    fn check_link_edits(app: &mut App<'_>) {
+        for link in app.editor.links.values_mut() {
+            let ta_link = app.editor.body.links.get(&(link.text_id as usize))
+                .expect("editor links and textarea links should be synced");
+            link.deleted = ta_link.deleted;
+        }
+    }
 
-    async fn check_link_deletion(app: &mut App<'_>, key: &Key) -> Result<()> {
+    fn check_link_deletion(app: &mut App<'_>, key: &Key) {
         let delete_amount = app.editor.body.deleted_link_ids.len();
-        let parent_note_id = app.editor.note_id.expect("Notes with links MUST be saved");
-        let mut deleted_links = vec![];
         
         if DELETE_KEYS.contains(key) && delete_amount > 0 {
             for _ in 0..delete_amount {
@@ -766,19 +904,13 @@ impl Events {
                 
                 // guards against cases where link hasn't been saved to editor yet
                 if !app.editor.links.is_empty() {
-                    app.editor.links.remove(&(textarea_id as i64));
+                    let ta_id_int = textarea_id as i64;
+                    let link = app.editor.links.get_mut(&ta_id_int)
+                        .expect("editor and textarea links should be synced");
+                    link.deleted = true;
+                    app.editor.deleted_link_ids.push(ta_id_int);
                 }
-                deleted_links.push((parent_note_id, textarea_id as i64));
             }
-
-            let result = DbMac::delete_links(&app.db, deleted_links).await;
-
-            match result {
-                Ok(_) => Ok(()),
-                Err(err) => Err(err),
-            }
-        } else {
-            Ok(())
         }
     }
 
