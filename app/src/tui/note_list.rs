@@ -109,19 +109,19 @@ impl Widget for NoteList {
         let (title_text, info_text, borders, padding) = match (self.mode, self.action) {
             (NoteListMode::Fullscreen, NoteListAction::LoadNote) => (
                 " Load Note ",
-                " <Esc> Return to prev screen | <Enter> Load Note | <ArrowUp/j> Next | <ArrowDown/k> Prev ",
+                " <Esc> prev screen | <Enter> Load Note | <up/j> Next | <down/k> Prev ",
                 Borders::ALL,
                 Padding::new(1, 1, 1, 1),
             ),
             (NoteListMode::Fullscreen, NoteListAction::LinkNote) => (
                 " Link Note ",
-                " <Enter> Link Note | <ArrowUp/j> Next | <ArrowDown/k> Prev ",
+                " <Enter> Link Note | <up/j> Next | <down/k> Prev ",
                 Borders::ALL,
                 Padding::new(1, 1, 1, 1),
             ),
             (NoteListMode::Sidebar, _) => (
                 " File Explorer ",
-                " <Alt-f> show/hide ",
+                " <Alt-f> hide files ",
                 Borders::TOP | Borders::RIGHT | Borders::BOTTOM,
                 Padding::new(1, 1, 0, 0),
             )
