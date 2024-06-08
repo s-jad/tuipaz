@@ -48,7 +48,7 @@ impl<'a> Widget for Searchbar<'a> {
 
         let (mode_span, key_hint_span, cursor_style) = match self.state {
             ComponentState::Active => (
-                Span::styled(" <| SEARCH |> ", Style::default().add_modifier(Modifier::BOLD).fg(Color::Green)),
+                Span::styled("  <| SEARCH |> ", Style::default().add_modifier(Modifier::BOLD).fg(Color::Green)),
                 Span::styled(
                     " | <Alt-q> quit | <Alt-/s/l/n/d> save/load/new/delete | <Alt-t> edit title | ",
                     Style::default().add_modifier(Modifier::BOLD),
