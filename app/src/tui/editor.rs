@@ -131,7 +131,7 @@ impl<'a> Editor<'a> {
         body.set_selection_style(Style::default().bg(Color::Red));
         body.set_max_histories(100);
 
-        let block_info = "  <| NORMAL |> ".to_string();
+        let block_info = " <| NORMAL |>".to_string();
 
         Self {
             title,
@@ -160,16 +160,16 @@ impl<'a> Editor<'a> {
             EditorMode::Insert => {
                 self.body.cancel_selection();
                 self.body.clear_search();
-                "  <| INSERT |> ".to_owned()
+                " <| INSERT |>".to_owned()
             }
             EditorMode::Normal => {
                 self.body.cancel_selection();
-                "  <| NORMAL |> ".to_owned()
+                " <| NORMAL |>".to_owned()
             }
             EditorMode::Visual => {
                 self.body.start_selection();
                 self.body.clear_search();
-                "  <| VISUAL |> ".to_owned()
+                " <| VISUAL |>".to_owned()
             }
         };
         self.mode = mode;
@@ -931,11 +931,6 @@ impl<'a> Editor<'a> {
                 acc
             }) as u16
     }
-
-    pub fn cmp_links(&self) -> Ordering {
-        self.links.iter().filter(|(_, l)| !l.deleted).count()
-            .cmp(&self.body.links.iter().filter(|(_, l)| !l.deleted).count())
-    }
 }
 
 impl<'a> Widget for Editor<'a> {
@@ -963,6 +958,7 @@ impl<'a> Widget for Editor<'a> {
             _ => (Style::default(), Style::default(), Style::default())
         };
 
+        let block_info_len = self.block_info.len();
 
         let (mode_span, key_hint_span) = match self.searchbar_open {
             true => {
@@ -972,26 +968,53 @@ impl<'a> Widget for Editor<'a> {
                 (
                     Span::styled(self.block_info, info_style),
                     Span::styled(
-                        " | <Alt-q> quit | <Alt-/s/l/n/d> save/load/new/delete | <Alt-t> edit title | ",
+                        " | <Alt-q> quit | <Alt-s/l/d/n> save/load/delete/new | <Alt-t> edit title ",
                         key_hint_style,
                     ),
                 )
             },
         };
 
-        let (cursor_style, top_right, bottom_left, bottom_right) = match (self.sidebar_open, self.searchbar_open) {
-            (true, true) => (Style::default(), "┬", "├", "┤"),
-            (false, true) => (Style::default(), "╮", "├", "┤"),
-            (true, false) => (Style::default().add_modifier(Modifier::REVERSED), "┬", "╰","┴"),
-            (false, false) => (Style::default().add_modifier(Modifier::REVERSED), "╮", "╰", "╯"),
+        let (
+            file_explorer_hint_text, 
+            cursor_style, 
+            top_right, 
+            bottom_left, 
+            bottom_right
+        ) = match (self.sidebar_open, self.searchbar_open) {
+            (true, true) => ("".to_owned(), Style::default(), "┬", "├", "┤"),
+            (false, true) => ("".to_owned(), Style::default(), "╮", "├", "┤"),
+            (true, false) => ("".to_owned(), Style::default().add_modifier(Modifier::REVERSED), "┬", "╰","┴"),
+            (false, false) => (
+                " <Alt-f> show files ".to_owned(),
+                Style::default().add_modifier(Modifier::REVERSED),
+                "╮", "╰", "╯"
+            ),
         };
 
+        let feh_len = file_explorer_hint_text.len();
         let title_text = format!(" {} ", self.title);
         let title = Span::styled(title_text, title_style);
+        let file_explorer_hint = Span::styled(file_explorer_hint_text, Style::default().add_modifier(Modifier::BOLD));
+
+        let kht_len = key_hint_span.content.len();
+        let tb_text_len = (kht_len + block_info_len + feh_len) as u16;
+        let tb_padding_width = match self.sidebar_open {
+            true => 0,
+            false => (area.width - tb_text_len - 5) as usize,
+        };
+        let tb_padding = Span::styled("─".repeat(tb_padding_width), Style::default());
+        let prefix_padding = Span::styled("─", Style::default());
 
         let editor_block = Block::default()
             .title(Title::from(title).alignment(Alignment::Left))
-            .title_bottom(Line::from(vec![mode_span, key_hint_span]))
+            .title_bottom(Line::from(vec![
+                prefix_padding,
+                mode_span,
+                key_hint_span,
+                tb_padding,
+                file_explorer_hint
+            ]))
             .borders(Borders::ALL)
             .border_set(border::Set {
                 top_left: "╭",
