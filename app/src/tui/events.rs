@@ -485,8 +485,7 @@ impl Events {
             ),
         };
 
-        info!("save_note::updated: {:?}", updated);
-        info!("save_note::save_note_result: {:?}", save_note_result);
+        info!("fn save_note\nupdated: {:?}\nsave_note_result: {:?}", updated, save_note_result);
 
         match save_note_result {
             Ok(parent_id) => {
@@ -557,7 +556,7 @@ impl Events {
             }
             Err(err) => {
                 app.user_msg = UserMessage::new(
-                    format!("Error saving note links!: {:?}", err),
+                    format!("Error saving note!: {:?}", err),
                     MessageType::Error,
                     None,
                 );
@@ -589,8 +588,7 @@ impl Events {
             .map(|link| link.to_db_link())
             .collect::<Vec<DbNoteLink>>();
         
-        info!("update_links::editor.links: {:?}", app.editor.links);
-        info!("update_links::links_to_update: {:?}", links_to_update);
+        info!("fn update_links\nlinks_to_update: {:?}", links_to_update);
 
         if !links_to_update.is_empty() {
             DbMac::update_links(tx, &app.db, links_to_update, app.editor.note_id.expect("Note should have an id")).await?
@@ -608,8 +606,7 @@ impl Events {
             .map(|link| link.to_db_link())
             .collect::<Vec<DbNoteLink>>();
         
-        info!("save_links::editor.links: {:?}", app.editor.links);
-        info!("save_links::links_to_save: {:?}", links_to_save);
+        info!("fn save_links\nlinks_to_save: {:?}", links_to_save);
 
         if !links_to_save.is_empty() {
             DbMac::save_links(tx, &app.db, links_to_save, app.editor.note_id.expect("Note should have an id")).await?
@@ -629,8 +626,7 @@ impl Events {
             .map(|link| (parent_note_id, link.text_id))
             .collect::<Vec<(i64, i64)>>();
         
-        info!("delete_links::editor.links: {:?}", app.editor.links);
-        info!("delete_links::links_to_delete: {:?}", links_to_delete);
+        info!("fn delete_links\nlinks_to_delete: {:?}", links_to_delete);
 
         if !links_to_delete.is_empty() {
             DbMac::delete_links(tx, &app.db, links_to_delete).await?
@@ -643,67 +639,67 @@ impl Events {
         app: &mut App<'_>, 
     ) -> Result<()> {
         let mut tx = app.db.begin().await?;
-
+        info!("fn sync_db_links\neditor links: {:?}", app.editor.links);
         let update_links_result = Self::update_links(&mut tx, app).await;
         let save_links_result = Self::save_links(&mut tx, app).await;
         let delete_links_result = Self::delete_links(&mut tx, app).await;
-        info!("update_links_result: {:?}", update_links_result);
-        info!("save_links_result: {:?}", save_links_result);
-        info!("delete_links_result: {:?}", delete_links_result);
+        info!("update_links_result: {:?}\nsave_links_result: {:?}\ndelete_links_result: {:?}",
+            update_links_result, save_links_result, delete_links_result
+        );
 
         match (save_links_result, delete_links_result, update_links_result) {
             (Ok(_), Ok(_), Ok(_)) => {
                 tx.commit().await?;
-                return Ok(());
+                Ok(())
             },
             (Err(se), Ok(_), Ok(_)) =>{
                 tx.rollback().await?;
-                return Err(eyre!("Transaction error::update_links: {:?}", se));
+                Err(eyre!("Transaction error::update_links: {:?}", se))
             },
             (Ok(_), Err(de), Ok(_)) => {
                 tx.rollback().await?;
-                return Err(eyre!("Transaction error::delete_links: {:?}", de));
+               Err(eyre!("Transaction error::delete_links: {:?}", de))
             },
             (Ok(_), Ok(_), Err(ue)) => {
                 tx.rollback().await?;
-                return Err(eyre!("Transaction error::update_links: {:?}", ue));
+                Err(eyre!("Transaction error::update_links: {:?}", ue))
             },
             (Err(se), Err(de), Ok(_)) =>{
                 tx.rollback().await?;
-                return Err(eyre!(
+                Err(eyre!(
                     "Transaction errors\n
                     save_links: {:?}\n
                     delete_links: {:?}",
                     se, de)
-                );
+                )
             },
             (Ok(_), Err(de), Err(ue)) =>{
                 tx.rollback().await?;
-                return Err(eyre!(
+                Err(eyre!(
                     "Transaction errors\n
                     delete_links: {:?}\n
                     update_links: {:?}",
                     de, ue)
-                );
+                )
              },
             (Err(se), Ok(_), Err(ue)) =>{
                 tx.rollback().await?;
-                return Err(eyre!(
+                Err(eyre!(
                     "Transaction errors\n
                     save_links: {:?}\n
                     update_links: {:?}",
                     se, ue)
-                );
+                )
              },
             (Err(se), Err(de), Err(ue)) =>{
                 tx.rollback().await?;
-                return Err(eyre!(
+                Err(eyre!(
                     "Transaction errors\n
                     save_links: {:?}\n
                     delete_links: {:?}\n
                     update_links: {:?}",
                     se, de, ue)
-                );
+                )
              },
         }
     }
