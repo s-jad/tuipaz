@@ -1,5 +1,4 @@
 use color_eyre::eyre::{eyre, Result};
-use crossterm::ExecutableCommand;
 use log::info;
 use serde::{Deserialize, Serialize};
 use sqlx::{QueryBuilder, SqlitePool};
