@@ -1,10 +1,11 @@
+use color_eyre::owo_colors::OwoColorize;
 use log::info;
 use crate::tui::utils::log_format;
 
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
-    style::{Color, Style},
-    text::Text,
+    style::{Color, Style, Stylize, Modifier},
+    text::{Text, Span, Line},
     widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
     Frame,
 };
@@ -118,14 +119,21 @@ fn render_exit_screen(frame: &mut Frame) {
         .border_type(BorderType::Rounded)
         .padding(Padding::new(0, 0, 1, 1))
         .style(Style::default());
+    
+    let exit_question = Line::styled(" Exit Tuipaz? ", Style::default());
+    let before_yn = Span::styled("(", Style::default());
+    let y_span = Span::styled("y", Style::default().fg(Color::Green).add_modifier(Modifier::BOLD));
+    let between_yn = Span::styled("/", Style::default());
+    let n_span = Span::styled("n", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD));
+    let after_yn = Span::styled(")", Style::default());
+    let spacer = Line::styled("\n", Style::default());
+    let yn_line = Line::from(vec![before_yn, y_span, between_yn, n_span, after_yn]);
 
-    let exit_text = Text::styled(" Exit Tuipaz? (y/n) ", Style::default().fg(Color::DarkGray));
-
-    Paragraph::new(exit_text)
+    Paragraph::new(vec![exit_question, spacer, yn_line])
         .block(popup_block)
         .alignment(Alignment::Center)
         .wrap(Wrap { trim: false })
-        .render(centered_rect(25, 15, area), buf);
+        .render(centered_rect(26, 20, area), buf);
 }
 
 fn render_load_note_screen(app: &mut App<'_>, frame: &mut Frame) {
