@@ -950,11 +950,13 @@ impl Events {
                 app.searchbar_state = SearchbarState::Hidden;
                 app.editor.searchbar_open = false;
                 app.set_active_widget(ActiveWidget::Editor);
+                app.searchbar.state = ComponentState::Inactive;
             }
             SearchbarState::Hidden => {
                 app.searchbar_state = SearchbarState::Open;
                 app.editor.searchbar_open = true;
                 app.set_active_widget(ActiveWidget::Searchbar);
+                app.searchbar.state = ComponentState::Active;
             }
         }
     }
@@ -966,7 +968,10 @@ impl Events {
                 app.sidebar_size = 0;
                 app.editor.sidebar_open = false;
                 app.searchbar.sidebar_open = false;
-                app.set_active_widget(ActiveWidget::Editor);
+                match app.editor.searchbar_open {
+                    true => app.set_active_widget(ActiveWidget::Searchbar),
+                    false => app.set_active_widget(ActiveWidget::Editor),
+                }
             }
             SidebarState::Hidden(n) => {
                 app.sidebar_size = n;
