@@ -121,9 +121,9 @@ impl<'a> App<'a> {
             btn_idx: 0,
             user_input: UserInput::new(ComponentState::Active, InputAction::Note),
             user_msg: UserMessage::welcome(),
-            sidebar_state: SidebarState::Hidden(20),
+            sidebar_state: SidebarState::Hidden(18),
             sidebar_size: 0,
-            searchbar: Searchbar::new(true, ComponentState::Inactive),
+            searchbar: Searchbar::new(false, ComponentState::Inactive),
             searchbar_state: SearchbarState::Hidden,
             pending_link: None,
             active_widget: None,
@@ -143,13 +143,11 @@ impl<'a> App<'a> {
             }
             ActiveWidget::Editor => {
                 self.editor.set_state(ComponentState::Active);
-                self.searchbar.set_state(ComponentState::Inactive);
                 self.note_list.set_state(ComponentState::Inactive);
             },
             ActiveWidget::Sidebar => {
                 self.note_list.set_state(ComponentState::Active);
                 self.editor.set_state(ComponentState::Inactive);
-                self.searchbar.set_state(ComponentState::Inactive);
             },
             ActiveWidget::Searchbar => {
                 self.searchbar.set_state(ComponentState::Active);
