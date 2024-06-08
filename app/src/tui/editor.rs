@@ -129,9 +129,9 @@ impl<'a> Editor<'a> {
         let mut body = TextArea::new(body, ta_links);
         body.set_cursor_line_style(Style::default());
         body.set_selection_style(Style::default().bg(Color::Red));
-        body.set_max_histories(1000);
+        body.set_max_histories(100);
 
-        let block_info = " <| NORMAL |> ".to_string();
+        let block_info = "  <| NORMAL |> ".to_string();
 
         Self {
             title,
@@ -145,7 +145,7 @@ impl<'a> Editor<'a> {
             num_buf: Vec::with_capacity(6),
             cmd_buf: String::with_capacity(6),
             cmd_state: CommandState::NoCommand,
-            sidebar_open: true,
+            sidebar_open: false,
             searchbar_open: false,
             state: ComponentState::Active,
         }
@@ -160,16 +160,16 @@ impl<'a> Editor<'a> {
             EditorMode::Insert => {
                 self.body.cancel_selection();
                 self.body.clear_search();
-                " <| INSERT |> ".to_owned()
+                "  <| INSERT |> ".to_owned()
             }
             EditorMode::Normal => {
                 self.body.cancel_selection();
-                " <| NORMAL |> ".to_owned()
+                "  <| NORMAL |> ".to_owned()
             }
             EditorMode::Visual => {
                 self.body.start_selection();
                 self.body.clear_search();
-                " <| VISUAL |> ".to_owned()
+                "  <| VISUAL |> ".to_owned()
             }
         };
         self.mode = mode;
