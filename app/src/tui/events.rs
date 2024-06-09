@@ -85,7 +85,7 @@ impl Events {
                     let body = app.editor.body.lines().join("\n");
                     let note_id = app.editor.note_id;
 
-                    Self::save_note(app, title, body, has_links, note_id).await?;
+                    Self::save_note(app, &title, &body, has_links, note_id).await?;
                 }
                 Input {
                     key: Key::Char('l'),
@@ -209,20 +209,20 @@ impl Events {
                 }  => match app.active_widget {
                         Some(ActiveWidget::Editor) => {
                             match app.editor.body.in_link(app.editor.body.cursor()) {
-                                    Some(link_id) => {
-                                        let linked_note_id = app
-                                            .editor
-                                            .links
-                                            .values()
-                                            .find(|link| link.text_id == link_id as i64)
-                                            .expect("Link should be set up")
-                                            .linked_id;
+                                Some(link_id) => {
+                                    let linked_note_id = app
+                                        .editor
+                                        .links
+                                        .values()
+                                        .find(|link| link.text_id == link_id as i64)
+                                        .expect("Link should be set up")
+                                        .linked_id;
 
-                                        Self::load_note(app, linked_note_id).await?;
-                                    }
-                                    None => {
-                                        app.editor.body.input(input);
-                                    }
+                                    Self::load_note(app, linked_note_id).await?;
+                                }
+                                None => {
+                                    app.editor.body.input(input);
+                                }
                             }
                         },
                         Some(ActiveWidget::Sidebar) => {
@@ -469,18 +469,18 @@ impl Events {
 
     async fn save_note(
         app: &mut App<'_>,
-        title: String,
-        body: String,
+        title: &str,
+        body: &str,
         has_links: bool,
         note_id: Option<i64>,
     ) -> Result<()> {
         let (save_note_result, updated) = match note_id {
             Some(id) => (
-                DbMac::update_note(&app.db, title.clone(), body, has_links, id).await,
+                DbMac::update_note(&app.db, title, body, has_links, id).await,
                 true,
             ),
             None => (
-                DbMac::save_note(&app.db, title.clone(), body, has_links).await,
+                DbMac::save_note(&app.db, title, body, has_links).await,
                 false,
             ),
         };
@@ -492,7 +492,7 @@ impl Events {
                 if updated {
                     let new_nid = NoteIdentifier {
                         id: parent_id,
-                        title,
+                        title: title.to_owned(),
                     };
 
                     // Replaces prev note title with new one in the load note screen
@@ -500,7 +500,7 @@ impl Events {
                 } else {
                     let new_nid = NoteIdentifier {
                         id: parent_id,
-                        title,
+                        title: title.to_owned(),
                     };
 
                     // Makes the note available in the load note screen
@@ -734,7 +734,7 @@ impl Events {
 
                 info!("load_note::links for editor: {:?}", links);
 
-                app.editor = Editor::new(note.title, body, links, Some(note.id));
+                app.editor = Editor::new(note.title, body, links, Some(note.id), true);
                 app.switch_to_main();
                 Ok(())
             }
@@ -794,9 +794,9 @@ impl Events {
             }
             // If no pre-exisiting notes have that title, create and save new note with that title
             false => {
-                let linked_body = "".to_string();
+                let linked_body = "";
                 let result =
-                    DbMac::save_note(&app.db, linked_title.clone(), linked_body.clone(), false)
+                    DbMac::save_note(&app.db, &linked_title, linked_body, false)
                         .await;
 
                 match result {
@@ -816,7 +816,7 @@ impl Events {
                             let has_links = true;
                             let note_id = app.editor.note_id;
                             let parent_result =
-                                Self::save_note(app, parent_title, parent_body, has_links, note_id)
+                                Self::save_note(app, &parent_title, &parent_body, has_links, note_id)
                                     .await;
 
                             match parent_result {
@@ -824,9 +824,10 @@ impl Events {
                                     // If parent note saved correctly, switch editor to linked) note
                                     app.editor = Editor::new(
                                         linked_title,
-                                        vec![linked_body],
+                                        vec![linked_body.to_owned()],
                                         HashMap::new(),
                                         Some(id),
+                                        app.editor.sidebar_open
                                     );
                                     app.note_list.update(new_nid);
                                     app.switch_to_main();
@@ -836,8 +837,13 @@ impl Events {
                             }
                         } else {
                             // if not linked to another note, simply switch to editor with new note
-                            app.editor =
-                                Editor::new(linked_title, vec![linked_body], HashMap::new(), Some(id));
+                            app.editor = Editor::new(
+                                linked_title,
+                                vec![linked_body.to_owned()],
+                                HashMap::new(),
+                                Some(id),
+                                app.editor.sidebar_open
+                            );
                             app.note_list.update(new_nid);
                             app.switch_to_main();
                             Ok(())
@@ -880,11 +886,15 @@ impl Events {
     }
 
     fn check_link_edits(app: &mut App<'_>) {
+        info!("check_link_edits::editor.links BEFORE: {:?}", app.editor.links);
+        info!("check_link_edits::editor.body.links BEFORE: {:?}", app.editor.body.links);
         for link in app.editor.links.values_mut() {
             let ta_link = app.editor.body.links.get(&(link.text_id as usize))
                 .expect("editor links and textarea links should be synced");
             link.deleted = ta_link.deleted;
         }
+        info!("check_link_edits::editor.links AFTER : {:?}", app.editor.links);
+        info!("check_link_edits::editor.body.links AFTER : {:?}", app.editor.body.links);
     }
 
     fn check_link_deletion(app: &mut App<'_>, key: &Key) {
