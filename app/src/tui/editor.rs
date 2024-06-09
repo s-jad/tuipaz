@@ -1,4 +1,4 @@
-use std::{collections::HashMap, cmp::Ordering};
+use std::collections::HashMap;
 
 use log::info;
 use ratatui::{
@@ -120,6 +120,7 @@ impl<'a> Editor<'a> {
         body: Vec<String>,
         links: HashMap<i64, Link>,
         note_id: Option<i64>,
+        sidebar_open: bool,
     ) -> Self {
         let ta_links = links
             .values()
@@ -145,7 +146,7 @@ impl<'a> Editor<'a> {
             num_buf: Vec::with_capacity(6),
             cmd_buf: String::with_capacity(6),
             cmd_state: CommandState::NoCommand,
-            sidebar_open: false,
+            sidebar_open,
             searchbar_open: false,
             state: ComponentState::Active,
         }
@@ -999,6 +1000,9 @@ impl<'a> Widget for Editor<'a> {
 
         let kht_len = key_hint_span.content.len();
         let tb_text_len = (kht_len + block_info_len + feh_len) as u16;
+        info!("area.width: {:?}", area.width);
+        info!("tb_padding_width: {:?}", tb_text_len);
+        info!("self.sidebar_open: {:?}", self.sidebar_open);
         let tb_padding_width = match self.sidebar_open {
             true => 0,
             false => (area.width - tb_text_len - 5) as usize,
@@ -1047,7 +1051,8 @@ mod tests {
             "Test Note".to_string(),
             vec!["Line 1".to_string(), "Line 2".to_string()],
             HashMap::new(),
-            None
+            None,
+            false
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1062,7 +1067,8 @@ mod tests {
             "Test Note".to_string(),
             vec!["Line 1".to_string(), "Line 2".to_string()],
             HashMap::new(),
-            None
+            None,
+            false,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(1, 0));
@@ -1076,7 +1082,8 @@ mod tests {
             "Test Note".to_string(),
             vec!["Line 1".to_string(), "Line 2".to_string()],
             HashMap::new(),
-            None
+            None,
+            false,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1091,7 +1098,8 @@ mod tests {
             "Test Note".to_string(),
             vec!["Line 1".to_string(), "Line 2".to_string()],
             HashMap::new(),
-            None
+            None,
+            false,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1106,7 +1114,8 @@ mod tests {
             "Test Note".to_string(), 
             vec!["Line 1".to_string(), "Line 2".to_string(), "Line 3".to_string()],
             HashMap::new(),
-            None
+            None,
+            false,
         );
 
         editor.set_mode(EditorMode::Normal);
@@ -1122,7 +1131,8 @@ mod tests {
             "Test Note".to_string(), 
             vec!["Line 1".to_string(), "Line 2".to_string(), "Line 3".to_string()],
             HashMap::new(),
-            None
+            None,
+            false,
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![2];
@@ -1133,7 +1143,13 @@ mod tests {
 
     #[test]
     fn test_execute_delete_dw_no_links() {
-        let mut editor = Editor::new("Test Note".to_string(), vec!["Line 1".to_string()], HashMap::new(), None);
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["Line 1".to_string()],
+            HashMap::new(),
+            None,
+            false
+        );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
         editor.execute_delete('w');
@@ -1141,7 +1157,13 @@ mod tests {
     }
     #[test]
     fn test_execute_delete_db_no_links() {
-        let mut editor = Editor::new("Test Note".to_string(), vec!["Line one".to_string()], HashMap::new(), None);
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["Line one".to_string()],
+            HashMap::new(),
+            None,
+            false,
+        );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::End);
         editor.execute_delete('b');
@@ -1150,7 +1172,13 @@ mod tests {
 
     #[test]
     fn test_execute_delete_num_dw_no_links() {
-        let mut editor = Editor::new("Test Note".to_string(), vec!["Word one Word two".to_string()], HashMap::new(), None);
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["Word one Word two".to_string()],
+            HashMap::new(),
+            None,
+            false
+        );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
         editor.num_buf = vec![3]; 
@@ -1160,7 +1188,13 @@ mod tests {
 
     #[test]
     fn test_execute_delete_num_db_no_links() {
-        let mut editor = Editor::new("Test Note".to_string(), vec!["First word second word".to_string()], HashMap::new(), None);
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["First word second word".to_string()],
+            HashMap::new(),
+            None,
+            false
+        );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![3];
         editor.body.move_cursor(CursorMove::End);
@@ -1170,7 +1204,13 @@ mod tests {
 
     #[test]
     fn test_multiple_nums_in_buf_delete_char() {
-        let mut editor = Editor::new("Test Note".to_string(), vec!["1 2 3 4 5 6 7".to_string()], HashMap::new(), None);
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec!["1 2 3 4 5 6 7".to_string()],
+            HashMap::new(),
+            None,
+            false
+        );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![1, 2];
         editor.body.move_cursor(CursorMove::Jump(0,0));
@@ -1188,7 +1228,9 @@ mod tests {
                 "5".to_string()
             ], 
             HashMap::new(), 
-            None);
+            None,
+            false
+        );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(4,0));
         editor.execute_goto('g');
@@ -1204,7 +1246,9 @@ mod tests {
                 "5".to_string()
             ], 
             HashMap::new(), 
-            None);
+            None,
+            false
+        );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![3];
         editor.body.move_cursor(CursorMove::Jump(4,0));
@@ -1221,7 +1265,9 @@ mod tests {
                 "5".to_string()
             ], 
             HashMap::new(), 
-            None);
+            None,
+            false
+        );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0,0));
         editor.handle_input(Input { key: Key::Char('G'), shift: true, ..Default::default() });
