@@ -104,7 +104,7 @@ impl<'a> App<'a> {
             db,
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
-            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], HashMap::new(), None),
+            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], HashMap::new(), None, false),
             note_list,
             btns: [
                     Button::new(
@@ -166,7 +166,15 @@ impl<'a> App<'a> {
     pub(crate) fn switch_to_main(&mut self) {
         self.current_screen = Screen::Main;
         self.note_list.set_mode(NoteListMode::Sidebar);
-        self.set_active_widget(ActiveWidget::Editor);
+        match self.active_widget {
+            Some(active) => match active {
+                ActiveWidget::NoteList
+                | ActiveWidget::NoteTitleInput
+                | ActiveWidget::Searchbar => self.set_active_widget(ActiveWidget::Editor),
+                _ => {}
+            },
+            None => self.set_active_widget(ActiveWidget::Editor),
+        }
     }
     
     pub(crate) fn switch_to_load_note(&mut self) {
