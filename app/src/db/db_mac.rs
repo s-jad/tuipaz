@@ -69,8 +69,8 @@ pub(crate) struct DbMac;
 impl DbMac {
     pub(crate) async fn save_note(
         db: &SqlitePool,
-        title: String,
-        body: String,
+        title: &str,
+        body: &str,
         has_links: bool,
     ) -> Result<i64> {
         let result = sqlx::query!(
@@ -91,8 +91,8 @@ impl DbMac {
 
     pub(crate) async fn update_note(
         db: &SqlitePool,
-        title: String,
-        body: String,
+        title: &str,
+        body: &str,
         has_links: bool,
         id: i64,
     ) -> Result<i64> {
