@@ -733,10 +733,41 @@ impl Events {
                 };
 
                 info!("load_note::links for editor: {:?}", links);
+                
+                // Save current note before loading new one
+                let has_links = !matches!(app.editor.links.len(), 0);
+                let sync_title = &app.editor.title.clone();
+                let sync_body = &app.editor.body.lines().join("\n");
+                let sync_note_db_result = if sync_title != " Untitled " {
+                    info!("saving note with title: {:?}", sync_title);
+                    Self::save_note(
+                        app,
+                        sync_title,
+                        sync_body,
+                        has_links,
+                        app.editor.note_id,
+                    ).await
+                } else {
+                    Ok(())
+                };
 
-                app.editor = Editor::new(note.title, body, links, Some(note.id), true);
-                app.switch_to_main();
-                Ok(())
+                match sync_note_db_result {
+                    Ok(_) => {
+                        app.editor = Editor::new(note.title, body, links, Some(note.id), true);
+                        app.switch_to_main();
+                        Ok(())
+                    },
+                    Err(err) => {
+                        app.user_msg = UserMessage::new(
+                            format!("Error saving current note!: {:?}", err),
+                            MessageType::Error,
+                            None,
+                        );
+                        app.prev_screen = app.current_screen;
+                        app.current_screen = Screen::Popup;
+                        Err(err)
+                    },
+                }
             }
             Err(err) => {
                 app.user_msg = UserMessage::new(
@@ -886,15 +917,11 @@ impl Events {
     }
 
     fn check_link_edits(app: &mut App<'_>) {
-        info!("check_link_edits::editor.links BEFORE: {:?}", app.editor.links);
-        info!("check_link_edits::editor.body.links BEFORE: {:?}", app.editor.body.links);
         for link in app.editor.links.values_mut() {
             let ta_link = app.editor.body.links.get(&(link.text_id as usize))
                 .expect("editor links and textarea links should be synced");
             link.deleted = ta_link.deleted;
         }
-        info!("check_link_edits::editor.links AFTER : {:?}", app.editor.links);
-        info!("check_link_edits::editor.body.links AFTER : {:?}", app.editor.body.links);
     }
 
     fn check_link_deletion(app: &mut App<'_>, key: &Key) {
