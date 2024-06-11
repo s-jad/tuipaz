@@ -26,7 +26,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) deleted_link_ids: Vec<i64>,
     pub(crate) mode: EditorMode,
     pub(crate) block_info: String,
-    pub(crate) prev_cursor: CursorPosition,
+    pub(crate) prev_cursor_col: usize,
     pub(crate) num_buf: Vec<u32>,
     pub(crate) cmd_buf: String,
     pub(crate) cmd_state: CommandState,
@@ -92,13 +92,6 @@ impl Link {
     }
 }
 
-#[derive(Debug, Clone)]
-pub(crate) enum CursorPosition {
-    Head,
-    Middle(usize),
-    End,
-}
-
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(crate) enum CommandState {
     NoCommand,
@@ -142,7 +135,7 @@ impl<'a> Editor<'a> {
             deleted_link_ids: vec![],
             mode: EditorMode::Normal,
             block_info,
-            prev_cursor: CursorPosition::Head,
+            prev_cursor_col: 0,
             num_buf: Vec::with_capacity(6),
             cmd_buf: String::with_capacity(6),
             cmd_state: CommandState::NoCommand,
@@ -188,6 +181,20 @@ impl<'a> Editor<'a> {
                 Input { key: Key::Esc, .. } => {
                     self.set_mode(EditorMode::Normal);
                 }
+                Input { key: Key::Up, shift: false, ..} 
+                | Input { key: Key::Down, shift: false, .. }
+                | Input { key: Key::Up, shift: true, ..}
+                | Input { key: Key::Down, shift: true, ..} => {
+                    self.body.input(input);
+                    self.jump_cursor_to_prev_col();
+                }
+                Input { key: Key::Left, shift: false, ..} 
+                | Input { key: Key::Right, shift: false, .. }
+                | Input { key: Key::Left, shift: true, ..}
+                | Input { key: Key::Right, shift: true, ..} => {
+                    self.body.input(input);
+                    self.set_prev_cursor_col();
+                }
                 input => {
                     self.body.input(input);
                 }
@@ -214,6 +221,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::Back);
                         }),
                     }
+                    self.set_prev_cursor_col();
                 }
                 // Move Down
                 (
@@ -232,6 +240,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::Down);
                         }),
                     }
+                    self.jump_cursor_to_prev_col();
                 }
                 // Move Up
                 (
@@ -250,6 +259,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::Up);
                         }),
                     }
+                    self.jump_cursor_to_prev_col();
                 }
                 // Move Right
                 (
@@ -273,6 +283,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::Forward);
                         }),
                     }
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -289,6 +300,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::WordForward);
                         }),
                     }
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -305,6 +317,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::WordBack);
                         }),
                     }
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -314,6 +327,7 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 ) => {
                     self.body.move_cursor(CursorMove::Head);
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -323,6 +337,7 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 ) => {
                     self.body.move_cursor(CursorMove::End);
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -333,6 +348,7 @@ impl<'a> Editor<'a> {
                 ) => {
                     self.body.move_cursor(CursorMove::Bottom);
                     self.body.move_cursor(CursorMove::Head);
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -352,6 +368,7 @@ impl<'a> Editor<'a> {
                 ) => {
                     self.body.delete_line_by_end();
                     self.set_mode(EditorMode::Insert);
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -361,6 +378,7 @@ impl<'a> Editor<'a> {
                     _,
                 ) => {
                     self.body.paste();
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -371,6 +389,7 @@ impl<'a> Editor<'a> {
                     _,
                 ) => {
                     self.body.undo();
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -381,6 +400,7 @@ impl<'a> Editor<'a> {
                     _,
                 ) => {
                     self.body.redo();
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -397,6 +417,7 @@ impl<'a> Editor<'a> {
                             editor.body.delete_next_char();
                         }),
                     }
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -433,6 +454,7 @@ impl<'a> Editor<'a> {
                     _,
                 ) => {
                     self.body.search_forward(false);
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -444,6 +466,7 @@ impl<'a> Editor<'a> {
                     _,
                 ) => {
                     self.body.search_back(false);
+                    self.set_prev_cursor_col();
                 }
                 // Switch modes
                 (
@@ -537,6 +560,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::Back);
                         }),
                     }
+                    self.set_prev_cursor_col();
                 }
                 // Move Down
                 (
@@ -555,6 +579,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::Down);
                         }),
                     }
+                    self.jump_cursor_to_prev_col();
                 }
                 // Move Up
                 (
@@ -573,6 +598,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::Up);
                         }),
                     }
+                    self.jump_cursor_to_prev_col();
                 }
                 // Move Right
                 (
@@ -596,6 +622,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::Forward);
                         }),
                     }
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -612,6 +639,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::WordForward);
                         }),
                     }
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -629,6 +657,7 @@ impl<'a> Editor<'a> {
                             editor.body.move_cursor(CursorMove::WordBack);
                         }),
                     }
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -638,6 +667,7 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 ) => {
                     self.body.move_cursor(CursorMove::Head);
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -647,6 +677,7 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 ) => {
                     self.body.move_cursor(CursorMove::End);
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -657,6 +688,7 @@ impl<'a> Editor<'a> {
                 ) => {
                     self.body.move_cursor(CursorMove::Bottom);
                     self.body.move_cursor(CursorMove::Head);
+                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -682,6 +714,20 @@ impl<'a> Editor<'a> {
         }
     }
 
+    fn set_prev_cursor_col(&mut self) {
+        self.prev_cursor_col = self.body.cursor().1;
+    }
+
+    fn jump_cursor_to_prev_col(&mut self) {
+        let c = self.body.cursor();
+        let line_len = self.body.lines()[c.0].len();
+
+        if self.prev_cursor_col < line_len {
+            self.body.move_cursor(CursorMove::Jump(c.0 as u16, self.prev_cursor_col as u16));
+        } else {
+            self.body.move_cursor(CursorMove::End);
+        }
+    }
 
     fn prime_command_state(&mut self, input: Input) {
         match input.key {
@@ -1000,9 +1046,6 @@ impl<'a> Widget for Editor<'a> {
 
         let kht_len = key_hint_span.content.len();
         let tb_text_len = (kht_len + block_info_len + feh_len) as u16;
-        info!("area.width: {:?}", area.width);
-        info!("tb_padding_width: {:?}", tb_text_len);
-        info!("self.sidebar_open: {:?}", self.sidebar_open);
         let tb_padding_width = match self.sidebar_open {
             true => 0,
             false => (area.width - tb_text_len - 5) as usize,
