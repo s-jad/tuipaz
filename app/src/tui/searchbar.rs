@@ -14,8 +14,8 @@ pub(crate) struct Searchbar<'a> {
 }
 
 impl<'a> Searchbar<'a> {
-    pub(crate) fn new(sidebar_open: bool, state: ComponentState) -> Self {
-        let mut input = TextArea::new(vec!["".to_owned()], HashMap::new());
+    pub(crate) fn new(sidebar_open: bool, state: ComponentState, max_col: u16) -> Self {
+        let mut input = TextArea::new(vec!["".to_owned()], HashMap::new(), max_col);
         input.set_placeholder_text("Search...");
 
         Self {
