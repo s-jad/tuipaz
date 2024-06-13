@@ -84,10 +84,11 @@ pub(crate) struct App<'a> {
     pub(crate) searchbar_state: SearchbarState,
     pub(crate) pending_link: Option<TextAreaLink>,
     pub(crate) active_widget: Option<ActiveWidget>,
+    pub(crate) max_col: u16,
 }
 
 impl<'a> App<'a> {
-    pub fn new(db: Pool<Sqlite>, note_identifiers: Vec<NoteIdentifier>) -> Self {
+    pub fn new(db: Pool<Sqlite>, note_identifiers: Vec<NoteIdentifier>, term_size: u16) -> Self {
         let load_btn_state = match note_identifiers.len() {
             0 => ComponentState::Unavailable,
             _ => ComponentState::Inactive,
@@ -98,13 +99,15 @@ impl<'a> App<'a> {
             NoteListAction::LoadNote,
             ComponentState::Active,
         );
+        
+        let max_col = term_size - 4;
 
         Self {
             state: AppState::default(),
             db,
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
-            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], HashMap::new(), None, false),
+            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], HashMap::new(), None, false, max_col),
             note_list,
             btns: [
                     Button::new(
@@ -123,10 +126,11 @@ impl<'a> App<'a> {
             user_msg: UserMessage::welcome(),
             sidebar_state: SidebarState::Hidden(18),
             sidebar_size: 0,
-            searchbar: Searchbar::new(false, ComponentState::Inactive),
+            searchbar: Searchbar::new(false, ComponentState::Inactive, max_col),
             searchbar_state: SearchbarState::Hidden,
             pending_link: None,
             active_widget: None,
+            max_col,
         }
     }
 
@@ -187,6 +191,10 @@ impl<'a> App<'a> {
         self.current_screen = Screen::NewNote;
         self.user_input.set_action(action);
         self.set_active_widget(ActiveWidget::NoteTitleInput);
+    }
+
+    pub(crate) fn get_max_col(&self) -> u16 {
+        self.max_col - self.sidebar_size
     }
 }
 
