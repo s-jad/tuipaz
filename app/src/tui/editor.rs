@@ -700,7 +700,7 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 ) => {
                     self.body.copy();
-                    self.body.cancel_selection();
+                    self.set_mode(EditorMode::Normal);
                 }
                 (
                     Input {
