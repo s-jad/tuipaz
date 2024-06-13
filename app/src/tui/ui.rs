@@ -1,11 +1,9 @@
-use color_eyre::owo_colors::OwoColorize;
 use log::info;
-use crate::tui::utils::log_format;
 
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
-    style::{Color, Style, Stylize, Modifier},
-    text::{Text, Span, Line},
+    style::{Color, Style, Modifier},
+    text::{Span, Line},
     widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
     Frame,
 };
