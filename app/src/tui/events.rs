@@ -753,7 +753,7 @@ impl Events {
 
                 match sync_note_db_result {
                     Ok(_) => {
-                        app.editor = Editor::new(note.title, body, links, Some(note.id), true);
+                        app.editor = Editor::new(note.title, body, links, Some(note.id), true, app.max_col);
                         app.switch_to_main();
                         Ok(())
                     },
@@ -858,7 +858,8 @@ impl Events {
                                         vec![linked_body.to_owned()],
                                         HashMap::new(),
                                         Some(id),
-                                        app.editor.sidebar_open
+                                        app.editor.sidebar_open,
+                                        app.get_max_col(),
                                     );
                                     app.note_list.update(new_nid);
                                     app.switch_to_main();
@@ -873,7 +874,8 @@ impl Events {
                                 vec![linked_body.to_owned()],
                                 HashMap::new(),
                                 Some(id),
-                                app.editor.sidebar_open
+                                app.editor.sidebar_open,
+                                app.get_max_col(),
                             );
                             app.note_list.update(new_nid);
                             app.switch_to_main();
