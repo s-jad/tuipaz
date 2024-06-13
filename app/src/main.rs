@@ -37,7 +37,9 @@ async fn main() -> Result<()> {
     let db = init_db::create_db().await?;
     let mut term = tui::utils::init()?;
     let note_titles = DbMac::load_note_identifiers(&db).await?;
-    let mut app = App::new(db, note_titles);
+    let term_size = term.size().expect("Terminal should have a size").width;
+    info!("Size of Terminal: {}", term_size);
+    let mut app = App::new(db, note_titles, term_size);
     run(&mut app, &mut term).await?;
     tui::utils::restore()?;
     info!("{}END SESSION{}\n", seperator, seperator);
