@@ -33,6 +33,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) sidebar_open: bool,
     pub(crate) searchbar_open: bool,
     pub(crate) state: ComponentState,
+    pub(crate) max_col: u16,
 }
 
 #[derive(Debug, Clone)]
@@ -114,13 +115,14 @@ impl<'a> Editor<'a> {
         links: HashMap<i64, Link>,
         note_id: Option<i64>,
         sidebar_open: bool,
+        max_col: u16,
     ) -> Self {
         let ta_links = links
             .values()
             .map(|link| (link.text_id as usize, link.to_textarea_link()))
             .collect::<HashMap<usize,TextAreaLink>>();
 
-        let mut body = TextArea::new(body, ta_links);
+        let mut body = TextArea::new(body, ta_links, max_col);
         body.set_cursor_line_style(Style::default());
         body.set_selection_style(Style::default().bg(Color::Red));
         body.set_max_histories(100);
@@ -142,6 +144,7 @@ impl<'a> Editor<'a> {
             sidebar_open,
             searchbar_open: false,
             state: ComponentState::Active,
+            max_col,
         }
     }
 
@@ -348,7 +351,6 @@ impl<'a> Editor<'a> {
                 ) => {
                     self.body.move_cursor(CursorMove::Bottom);
                     self.body.move_cursor(CursorMove::Head);
-                    self.set_prev_cursor_col();
                 }
                 (
                     Input {
@@ -697,7 +699,8 @@ impl<'a> Editor<'a> {
                     },
                     CommandState::NoCommand,
                 ) => {
-                    self.body.yank_text();
+                    self.body.copy();
+                    self.body.cancel_selection();
                 }
                 (
                     Input {
@@ -708,6 +711,33 @@ impl<'a> Editor<'a> {
                 ) => {
                     self.body.cut();
                     self.set_mode(EditorMode::Normal);
+                }
+                (
+                    Input {
+                        key: Key::Char('1'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    self.body.set_alignment(Alignment::Left);
+                }
+                (
+                    Input {
+                        key: Key::Char('2'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    self.body.set_alignment(Alignment::Center);
+                }
+                (
+                    Input {
+                        key: Key::Char('3'),
+                        ..
+                    },
+                    CommandState::NoCommand,
+                ) => {
+                    self.body.set_alignment(Alignment::Right);
                 }
                 _ => {}
             },
@@ -1095,7 +1125,8 @@ mod tests {
             vec!["Line 1".to_string(), "Line 2".to_string()],
             HashMap::new(),
             None,
-            false
+            false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1112,6 +1143,7 @@ mod tests {
             HashMap::new(),
             None,
             false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(1, 0));
@@ -1127,6 +1159,7 @@ mod tests {
             HashMap::new(),
             None,
             false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1143,6 +1176,7 @@ mod tests {
             HashMap::new(),
             None,
             false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1159,6 +1193,7 @@ mod tests {
             HashMap::new(),
             None,
             false,
+            140,
         );
 
         editor.set_mode(EditorMode::Normal);
@@ -1176,6 +1211,7 @@ mod tests {
             HashMap::new(),
             None,
             false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![2];
@@ -1191,7 +1227,8 @@ mod tests {
             vec!["Line 1".to_string()],
             HashMap::new(),
             None,
-            false
+            false,
+            140
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1206,6 +1243,7 @@ mod tests {
             HashMap::new(),
             None,
             false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::End);
@@ -1220,7 +1258,8 @@ mod tests {
             vec!["Word one Word two".to_string()],
             HashMap::new(),
             None,
-            false
+            false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1236,7 +1275,8 @@ mod tests {
             vec!["First word second word".to_string()],
             HashMap::new(),
             None,
-            false
+            false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![3];
@@ -1252,7 +1292,8 @@ mod tests {
             vec!["1 2 3 4 5 6 7".to_string()],
             HashMap::new(),
             None,
-            false
+            false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![1, 2];
@@ -1272,7 +1313,8 @@ mod tests {
             ], 
             HashMap::new(), 
             None,
-            false
+            false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(4,0));
@@ -1290,7 +1332,8 @@ mod tests {
             ], 
             HashMap::new(), 
             None,
-            false
+            false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![3];
@@ -1309,7 +1352,8 @@ mod tests {
             ], 
             HashMap::new(), 
             None,
-            false
+            false,
+            140,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0,0));
