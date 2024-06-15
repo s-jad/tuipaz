@@ -15,7 +15,7 @@ use super::app::ComponentState;
 
 const DELETE_COMMANDS: [char; 7] = ['d', 'w', 'b', 'j', 'k', 'l', 'h'];
 const YANK_COMMANDS: [char; 6] = ['w', 'b', 'j', 'k', 'l', 'h'];
-const GOTO_COMMANDS: [char; 1] = ['g'];
+const GOTO_COMMAND: char = 'g';
 
 #[derive(Debug, Clone)]
 pub(crate) struct Editor<'a> {
@@ -99,6 +99,8 @@ pub(crate) enum CommandState {
     Delete,
     Yank,
     GoTo,
+    FindForward,
+    FindBackward,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -204,7 +206,9 @@ impl<'a> Editor<'a> {
             },
             EditorMode::Normal => match (input, &self.cmd_state) {
                 // Handle multi-key commands
-                (input, CommandState::GoTo | CommandState::Delete | CommandState::Yank) => {
+                (input, 
+                 CommandState::GoTo | CommandState::Delete | CommandState::Yank
+                 | CommandState::FindForward | CommandState::FindBackward) => {
                     self.process_command_key_inputs(input)
                 }
                 // Move left
@@ -778,6 +782,14 @@ impl<'a> Editor<'a> {
                             self.cmd_buf.push(c);
                             self.cmd_state = CommandState::Yank;
                         }
+                        ('f', CommandState::NoCommand) => {
+                            self.cmd_buf.push(c);
+                            self.cmd_state = CommandState::FindForward;
+                        }
+                        ('F', CommandState::NoCommand) => {
+                            self.cmd_buf.push(c);
+                            self.cmd_state = CommandState::FindBackward;
+                        }
                         _ => {
                             self.cmd_state = CommandState::NoCommand;
                             self.cmd_buf.clear();
@@ -799,10 +811,14 @@ impl<'a> Editor<'a> {
 
             if DELETE_COMMANDS.contains(&c) && self.cmd_state == CommandState::Delete {
                 self.execute_delete(c);
-            } else if GOTO_COMMANDS.contains(&c) && self.cmd_state == CommandState::GoTo {
-                self.execute_goto(c);
             } else if YANK_COMMANDS.contains(&c) && self.cmd_state == CommandState::Yank {
                 self.execute_yank(c);
+            } else if c == GOTO_COMMAND && self.cmd_state == CommandState::GoTo {
+                self.execute_goto(c);
+            } else if self.cmd_state == CommandState::FindForward {
+                self.execute_find(c, true);
+            } else if self.cmd_state == CommandState::FindBackward {
+                self.execute_find(c, false);
             } else {
                 self.cmd_state = CommandState::NoCommand;
             }
@@ -980,6 +996,36 @@ impl<'a> Editor<'a> {
                 self.num_buf.clear();
             }
         }
+        self.cmd_state = CommandState::NoCommand;
+    }
+
+    fn execute_find(&mut self, target: char, forward: bool) {
+        let cursor = self.body.cursor();
+
+        let line = &self.body.lines()[cursor.0];
+        
+        info!("cursor: {:?}", cursor);
+        info!("line: {}", line);
+
+        match forward {
+            true => {
+                info!("searching forward");
+                info!("line[cursor.1 + 1..]: {}", &line[cursor.1 + 1..]);
+                if let Some(col) = line[cursor.1 + 1..].chars().position(|c| c == target) {
+                    self.body.move_cursor(CursorMove::Jump(cursor.0 as u16, (cursor.1 + 1 + col) as u16));
+                }
+            },
+            false => {
+                info!("searching backwards");
+                info!("line[..cursor.1 - 1]: {}", &line[..cursor.1 - 1]);
+                if let Some(col) = line[..cursor.1 - 1].chars().rev().position(|c| c == target) {
+                    self.body.move_cursor(CursorMove::Jump(cursor.0 as u16, (cursor.1 - 2 - col) as u16));
+                }
+            },
+        } 
+
+        self.cmd_buf.clear();
+        self.num_buf.clear();
         self.cmd_state = CommandState::NoCommand;
     }
 
