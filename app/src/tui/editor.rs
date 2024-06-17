@@ -844,9 +844,10 @@ impl<'a> Editor<'a> {
                 self.body.hop_pending = false;
                 if let Some(num) = c.to_digit(10) {
                     self.num_buf.push(num);
-                } else if c == 'h' {
-                    self.execute_hop();
-                }
+                    if self.num_buf.len() == 2 {
+                        self.execute_hop();
+                    }
+                } 
             } else {
                 self.cmd_state = CommandState::NoCommand;
             }
