@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use log::info;
+use log::{info, error};
 use ratatui::{
     style::{Color, Modifier, Style, Stylize},
     symbols::border,
@@ -9,7 +9,7 @@ use ratatui::{
 };
 use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea};
 
-use crate::{db::db_mac::DbNoteLink, tui::utils::log_format};
+use crate::db::db_mac::DbNoteLink;
 
 use super::app::ComponentState;
 
@@ -34,6 +34,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) searchbar_open: bool,
     pub(crate) state: ComponentState,
     pub(crate) max_col: u16,
+    pub(crate) hop_indexes: Vec<(usize, (usize, usize))>,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +102,8 @@ pub(crate) enum CommandState {
     GoTo,
     FindForward,
     FindBackward,
+    PrimeHop,
+    ExecuteHop,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -147,6 +150,7 @@ impl<'a> Editor<'a> {
             searchbar_open: false,
             state: ComponentState::Active,
             max_col,
+            hop_indexes: Vec::new(),
         }
     }
 
@@ -180,7 +184,6 @@ impl<'a> Editor<'a> {
 
     pub(crate) fn handle_input(&mut self, input: Input) {
         let num_buf_len = self.num_buf.len() as u32;
-
         match self.mode {
             EditorMode::Insert => match input {
                 Input { key: Key::Esc, .. } => {
@@ -206,9 +209,12 @@ impl<'a> Editor<'a> {
             },
             EditorMode::Normal => match (input, &self.cmd_state) {
                 // Handle multi-key commands
-                (input, 
-                 CommandState::GoTo | CommandState::Delete | CommandState::Yank
-                 | CommandState::FindForward | CommandState::FindBackward) => {
+                (
+                    input, 
+                    CommandState::GoTo | CommandState::Delete | CommandState::Yank
+                    | CommandState::FindForward | CommandState::FindBackward
+                    | CommandState::PrimeHop | CommandState::ExecuteHop 
+                 ) => {
                     self.process_command_key_inputs(input)
                 }
                 // Move left
@@ -790,6 +796,9 @@ impl<'a> Editor<'a> {
                             self.cmd_buf.push(c);
                             self.cmd_state = CommandState::FindBackward;
                         }
+                        ('s', CommandState::NoCommand) => {
+                            self.cmd_state = CommandState::PrimeHop;
+                        }
                         _ => {
                             self.cmd_state = CommandState::NoCommand;
                             self.cmd_buf.clear();
@@ -806,6 +815,9 @@ impl<'a> Editor<'a> {
     }
 
     fn process_command_key_inputs(&mut self, input: Input) {
+        info!("process_command_key_inputs::self.input: {:?}", input);
+        info!("process_command_key_inputs::self.cmd_state: {:?}", self.cmd_state);
+        info!("process_command_key_inputs::self.body.hop: {:?}", self.body.hop);
         if let Key::Char(c) = input.key {
             self.cmd_buf.push(c);
 
@@ -819,10 +831,22 @@ impl<'a> Editor<'a> {
                 self.execute_find(c, true);
             } else if self.cmd_state == CommandState::FindBackward {
                 self.execute_find(c, false);
+            } else if self.cmd_state == CommandState::PrimeHop {
+                if self.cmd_buf.len() == 2 {
+                    let search_str = self.cmd_buf.clone();
+                    self.prime_hop(&search_str);
+                }
+            } else if self.cmd_state == CommandState::ExecuteHop {
+                if let Some(num) = c.to_digit(10) {
+                    self.num_buf.push(num);
+                } else if c == 'h' {
+                    self.execute_hop();
+                }
             } else {
                 self.cmd_state = CommandState::NoCommand;
             }
         }
+
     }
 
     fn execute_delete(&mut self, modifier: char) {
@@ -1001,23 +1025,15 @@ impl<'a> Editor<'a> {
 
     fn execute_find(&mut self, target: char, forward: bool) {
         let cursor = self.body.cursor();
-
         let line = &self.body.lines()[cursor.0];
-        
-        info!("cursor: {:?}", cursor);
-        info!("line: {}", line);
 
         match forward {
             true => {
-                info!("searching forward");
-                info!("line[cursor.1 + 1..]: {}", &line[cursor.1 + 1..]);
                 if let Some(col) = line[cursor.1 + 1..].chars().position(|c| c == target) {
                     self.body.move_cursor(CursorMove::Jump(cursor.0 as u16, (cursor.1 + 1 + col) as u16));
                 }
             },
             false => {
-                info!("searching backwards");
-                info!("line[..cursor.1 - 1]: {}", &line[..cursor.1 - 1]);
                 if let Some(col) = line[..cursor.1 - 1].chars().rev().position(|c| c == target) {
                     self.body.move_cursor(CursorMove::Jump(cursor.0 as u16, (cursor.1 - 2 - col) as u16));
                 }
@@ -1027,6 +1043,29 @@ impl<'a> Editor<'a> {
         self.cmd_buf.clear();
         self.num_buf.clear();
         self.cmd_state = CommandState::NoCommand;
+    }
+
+    fn prime_hop(&mut self, target: &str) {
+        match self.body.set_hop_pattern(target) {
+            Ok(_) => info!("found: {}", target),
+            Err(e) => error!("Hop error: {}", e),
+        }
+
+        info!("prime_hop::self.body.hop: {:?}", self.body.hop);
+        self.cmd_state = CommandState::ExecuteHop;
+    }
+
+    fn execute_hop(&mut self) {
+        info!("Executing hop BEFORE CLEAR: {:?}", self.body.hop);
+        let num_buf_len = self.num_buf.len();
+        let idx = self.get_num_from_buf(num_buf_len as u32);
+        info!("execute_hop::idx: {}", idx);
+        self.body.hop_to_idx(idx as usize);
+        self.body.clear_hop();
+        self.cmd_buf.clear();
+        self.num_buf.clear();
+        self.cmd_state = CommandState::NoCommand;
+        info!("Executing hop AFTER CLEAR: {:?}", self.body.hop);
     }
 
     fn repeat_action<F>(&mut self, num_buf_len: u32, mut action: F)
