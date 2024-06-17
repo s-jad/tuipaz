@@ -215,7 +215,14 @@ impl<'a> Editor<'a> {
                     | CommandState::FindForward | CommandState::FindBackward
                     | CommandState::PrimeHop | CommandState::ExecuteHop 
                  ) => {
-                    self.process_command_key_inputs(input)
+                    if input.key == Key::Esc {
+                        self.cmd_buf.clear();
+                        self.num_buf.clear();
+                        self.body.clear_hop();
+                        self.cmd_state = CommandState::NoCommand;
+                    } else {
+                        self.process_command_key_inputs(input)
+                    }
                 }
                 // Move left
                 (
@@ -815,9 +822,6 @@ impl<'a> Editor<'a> {
     }
 
     fn process_command_key_inputs(&mut self, input: Input) {
-        info!("process_command_key_inputs::self.input: {:?}", input);
-        info!("process_command_key_inputs::self.cmd_state: {:?}", self.cmd_state);
-        info!("process_command_key_inputs::self.body.hop: {:?}", self.body.hop);
         if let Key::Char(c) = input.key {
             self.cmd_buf.push(c);
 
@@ -837,6 +841,7 @@ impl<'a> Editor<'a> {
                     self.prime_hop(&search_str);
                 }
             } else if self.cmd_state == CommandState::ExecuteHop {
+                self.body.hop_pending = false;
                 if let Some(num) = c.to_digit(10) {
                     self.num_buf.push(num);
                 } else if c == 'h' {
@@ -1046,26 +1051,22 @@ impl<'a> Editor<'a> {
     }
 
     fn prime_hop(&mut self, target: &str) {
+        self.body.init_hop();
         match self.body.set_hop_pattern(target) {
             Ok(_) => info!("found: {}", target),
             Err(e) => error!("Hop error: {}", e),
         }
-
-        info!("prime_hop::self.body.hop: {:?}", self.body.hop);
         self.cmd_state = CommandState::ExecuteHop;
     }
 
     fn execute_hop(&mut self) {
-        info!("Executing hop BEFORE CLEAR: {:?}", self.body.hop);
         let num_buf_len = self.num_buf.len();
         let idx = self.get_num_from_buf(num_buf_len as u32);
-        info!("execute_hop::idx: {}", idx);
         self.body.hop_to_idx(idx as usize);
         self.body.clear_hop();
         self.cmd_buf.clear();
         self.num_buf.clear();
         self.cmd_state = CommandState::NoCommand;
-        info!("Executing hop AFTER CLEAR: {:?}", self.body.hop);
     }
 
     fn repeat_action<F>(&mut self, num_buf_len: u32, mut action: F)
