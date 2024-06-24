@@ -15,7 +15,7 @@ use super::{
     note_list::{NoteList, NoteListAction, NoteListMode},
     ui::ui,
     user_messages::UserMessage,
-    utils::Tui, searchbar::Searchbar, config::Config,
+    utils::Tui, searchbar::{Searchbar, SearchbarTheme}, config::Config,
 };
 
 #[derive(PartialEq, Debug, Default, Clone, Copy)]
@@ -103,12 +103,21 @@ impl<'a> App<'a> {
         
         let max_col = term_size - 4;
         let editor_theme = EditorTheme {
+            title: config.theme.title,
+            text: config.theme.text,
+            boundaries: config.theme.boundaries,
             normal_mode: config.theme.modes.normal_mode,
             insert_mode: config.theme.modes.insert_mode,
             visual_mode: config.theme.modes.visual_mode,
             search_mode: config.theme.modes.search_mode,
-            select: config.theme.select,
-            search: config.theme.search,
+            select: config.theme.highlights.select,
+            search: config.theme.highlights.search,
+            links: config.theme.highlights.links,
+        };
+
+        let search_theme = SearchbarTheme {
+            text: config.theme.text, 
+            mode_info: config.theme.modes.search_mode,
         };
 
         Self {
@@ -144,7 +153,7 @@ impl<'a> App<'a> {
             user_msg: UserMessage::welcome(),
             sidebar_state: SidebarState::Hidden(18),
             sidebar_size: 0,
-            searchbar: Searchbar::new(false, ComponentState::Inactive, max_col),
+            searchbar: Searchbar::new(false, ComponentState::Inactive, max_col, search_theme),
             searchbar_state: SearchbarState::Hidden,
             pending_link: None,
             active_widget: None,
