@@ -4,13 +4,15 @@ mod tui;
 use std::path::PathBuf;
 
 use log::{LevelFilter, info};
-use log4rs::config::{Config, Root, Appender};
+use log4rs::config::{Config as LogConfig, Root, Appender};
 use log4rs::encode::pattern::PatternEncoder;
 use log4rs::append::file::FileAppender;
 use color_eyre::Result;
 use db::{db_mac::DbMac, init_db};
 use dotenv::dotenv;
 use tui::app::{run, App};
+
+use crate::tui::config::try_load_config;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -22,7 +24,7 @@ async fn main() -> Result<()> {
        .encoder(Box::new(PatternEncoder::new("{n}| {({l}):5.5}| {f}:{L}{n}{m}{n}")))
        .build(path) {
         Ok(file_appender) => {
-            let config = Config::builder()
+            let config = LogConfig::builder()
                .appender(Appender::builder().build("file", Box::new(file_appender))) // Now correctly passing a Box<dyn Append>
                .build(Root::builder().appender("file").build(LevelFilter::Info))?;
 
@@ -38,8 +40,10 @@ async fn main() -> Result<()> {
     let mut term = tui::utils::init()?;
     let note_titles = DbMac::load_note_identifiers(&db).await?;
     let term_size = term.size().expect("Terminal should have a size").width;
-    info!("Size of Terminal: {}", term_size);
-    let mut app = App::new(db, note_titles, term_size);
+    let config: tui::config::Config = try_load_config("../config.toml")?;
+    info!("config: {config:?}");
+
+    let mut app = App::new(config, db, note_titles, term_size);
     run(&mut app, &mut term).await?;
     tui::utils::restore()?;
     info!("{}END SESSION{}\n", seperator, seperator);
