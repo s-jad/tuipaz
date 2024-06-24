@@ -7,7 +7,7 @@ use ratatui::{
     text::{Line, Span},
     widgets::{block::Title, Block, Borders, Padding, Widget}, layout::Alignment,
 };
-use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea};
+use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea, TextAreaTheme};
 
 use crate::db::db_mac::DbNoteLink;
 
@@ -20,12 +20,16 @@ const GOTO_COMMAND: char = 'g';
 
 #[derive(Debug, Clone)]
 pub(crate) struct EditorTheme {
+    pub(crate) title: Color,
+    pub(crate) text: Color,
+    pub(crate) boundaries: Color,
     pub(crate) normal_mode: Color,
     pub(crate) insert_mode: Color,
     pub(crate) visual_mode: Color,
     pub(crate) search_mode: Color,
     pub(crate) select: Color,
     pub(crate) search: Color,
+    pub(crate) links: Color,
 }
 
 #[derive(Debug, Clone)]
@@ -138,9 +142,15 @@ impl<'a> Editor<'a> {
             .map(|link| (link.text_id as usize, link.to_textarea_link()))
             .collect::<HashMap<usize,TextAreaLink>>();
 
-        let mut body = TextArea::new(body, ta_links, max_col);
+        let ta_theme = TextAreaTheme {
+            text: theme.text,
+            select: theme.select,
+            links: theme.links,
+        };
+
+        let mut body = TextArea::new(body, ta_links, max_col, ta_theme);
         body.set_cursor_line_style(Style::default());
-        body.set_selection_style(Style::default().bg(Color::Red));
+        body.set_selection_style(Style::default().bg(theme.select));
         body.set_max_histories(100);
 
         let block_info = " <| NORMAL |>".to_string();
@@ -177,7 +187,13 @@ impl<'a> Editor<'a> {
             .map(|link| (link.text_id as usize, link.to_textarea_link()))
             .collect::<HashMap<usize,TextAreaLink>>();
 
-        let mut body = TextArea::new(body, ta_links, max_col);
+        let ta_theme = TextAreaTheme {
+            text: self.theme.text,
+            select: self.theme.select,
+            links: self.theme.links,
+        };
+
+        let mut body = TextArea::new(body, ta_links, max_col, ta_theme);
         body.set_cursor_line_style(Style::default());
         body.set_selection_style(Style::default().bg(Color::Red));
         body.set_max_histories(100);
@@ -1138,19 +1154,19 @@ impl<'a> Widget for Editor<'a> {
         Self: Sized,
     {
         let info_style = match self.mode {
-            EditorMode::Insert => Style::default().bold().fg(Color::Blue),
-            EditorMode::Normal => Style::default().bold().fg(Color::Yellow),
-            EditorMode::Visual => Style::default().bold().fg(Color::Red),
+            EditorMode::Normal => Style::default().bold().fg(self.theme.normal_mode),
+            EditorMode::Insert => Style::default().bold().fg(self.theme.insert_mode),
+            EditorMode::Visual => Style::default().bold().fg(self.theme.visual_mode),
         };
 
         let (title_style, key_hint_style, text_style) = match self.state {
             ComponentState::Active => (
-                Style::default().bold().fg(Color::Yellow),
+                Style::default().bold().fg(self.theme.title),
                 Style::default().bold(),
                 Style::default()
             ),
             ComponentState::Inactive => (
-                Style::default().bold().dim(),
+                Style::default().bold().fg(self.theme.title).dim(),
                 Style::default().bold().dim(),
                 Style::default().dim()
             ),
@@ -1240,14 +1256,19 @@ impl<'a> Widget for Editor<'a> {
 
 mod tests {
     use super::*;
-    
+
+    const THEME_COLOR: Color = Color::Red; 
     const THEME: EditorTheme = EditorTheme {
-        normal_mode: Color::default(),
-        insert_mode: Color::default(),
-        visual_mode: Color::default(),
-        search_mode: Color::default(),
-        select: Color::default(),
-        search: Color::default(),
+        title: THEME_COLOR,
+        text: THEME_COLOR,
+        boundaries: THEME_COLOR,
+        normal_mode: THEME_COLOR,
+        insert_mode: THEME_COLOR,
+        visual_mode: THEME_COLOR,
+        search_mode: THEME_COLOR,
+        select: THEME_COLOR,
+        search: THEME_COLOR,
+        links: THEME_COLOR,
     };
 
     #[test]
