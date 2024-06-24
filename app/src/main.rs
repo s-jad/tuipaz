@@ -11,6 +11,7 @@ use color_eyre::Result;
 use db::{db_mac::DbMac, init_db};
 use dotenv::dotenv;
 use tui::app::{run, App};
+use tui::config::Config;
 
 use crate::tui::config::try_load_config;
 
@@ -40,9 +41,7 @@ async fn main() -> Result<()> {
     let mut term = tui::utils::init()?;
     let note_titles = DbMac::load_note_identifiers(&db).await?;
     let term_size = term.size().expect("Terminal should have a size").width;
-    let config: tui::config::Config = try_load_config("../config.toml")?;
-    info!("config: {config:?}");
-
+    let config: Config = try_load_config()?;
     let mut app = App::new(config, db, note_titles, term_size);
     run(&mut app, &mut term).await?;
     tui::utils::restore()?;
