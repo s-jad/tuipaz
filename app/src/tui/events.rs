@@ -10,7 +10,7 @@ use crate::db::db_mac::{DbMac, DbNoteLink, NoteIdentifier};
 use super::{
     app::{ActiveWidget, App, AppState, Screen, SidebarState, ComponentState, SearchbarState},
     buttons::ButtonAction,
-    editor::{Editor, Link, EditorMode},
+    editor::{Link, EditorMode},
     inputs::{InputAction, UserInput},
     user_messages::{MessageType, UserMessage}, note_list::{NoteListMode, NoteListAction},
 };
@@ -231,7 +231,7 @@ impl Events {
                             Self::load_note(app, id).await?;
                         },
                         Some(ActiveWidget::Searchbar) => {
-                            app.searchbar.search();
+                            app.searchbar.clear_search();
                             Self::toggle_searchbar(app);
                         },
                         Some(_) | None => {},
@@ -753,7 +753,14 @@ impl Events {
 
                 match sync_note_db_result {
                     Ok(_) => {
-                        app.editor = Editor::new(note.title, body, links, Some(note.id), true, app.max_col);
+                        app.editor.refresh(
+                            note.title, 
+                            body, 
+                            links, 
+                            Some(note.id), 
+                            app.max_col,
+                        );
+
                         app.switch_to_main();
                         Ok(())
                     },
@@ -853,12 +860,11 @@ impl Events {
                             match parent_result {
                                 Ok(_) => {
                                     // If parent note saved correctly, switch editor to linked) note
-                                    app.editor = Editor::new(
+                                    app.editor.refresh(
                                         linked_title,
                                         vec![linked_body.to_owned()],
                                         HashMap::new(),
                                         Some(id),
-                                        app.editor.sidebar_open,
                                         app.get_max_col(),
                                     );
                                     app.note_list.update(new_nid);
@@ -869,14 +875,14 @@ impl Events {
                             }
                         } else {
                             // if not linked to another note, simply switch to editor with new note
-                            app.editor = Editor::new(
+                            app.editor.refresh(
                                 linked_title,
                                 vec![linked_body.to_owned()],
                                 HashMap::new(),
                                 Some(id),
-                                app.editor.sidebar_open,
                                 app.get_max_col(),
                             );
+
                             app.note_list.update(new_nid);
                             app.switch_to_main();
                             Ok(())
