@@ -1,27 +1,32 @@
-use std::collections::HashMap;
-
 use log::info;
 use ratatui::{widgets::{Borders, Block, Padding, Widget}, symbols, style::{Modifier, Style, Color}, text::{Span, Line}};
-use tuipaz_textarea::{TextArea, CursorMove};
+use tuipaz_textarea::TextInput;
 
 use super::app::ComponentState;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Searchbar<'a> {
-    pub(crate) input: TextArea<'a>,
+    pub(crate) input: TextInput<'a>,
     pub(crate) sidebar_open: bool,
     pub(crate) state: ComponentState,
+    pub(crate) mode_info: Color,
+}
+
+#[derive(Debug)]
+pub(crate) struct SearchbarTheme {
+    pub(crate) text: Color,
+    pub(crate) mode_info: Color,
 }
 
 impl<'a> Searchbar<'a> {
-    pub(crate) fn new(sidebar_open: bool, state: ComponentState, max_col: u16) -> Self {
-        let mut input = TextArea::new(vec!["".to_owned()], HashMap::new(), max_col);
-        input.set_placeholder_text("Search...");
+    pub(crate) fn new(sidebar_open: bool, state: ComponentState, max_col: u16, theme: SearchbarTheme) -> Self {
+        let input = TextInput::new("".to_owned(), max_col, theme.text, "Search...".to_owned());
 
         Self {
             input,
             sidebar_open,
-            state
+            state,
+            mode_info: theme.mode_info, 
         }
     }
 
@@ -29,9 +34,13 @@ impl<'a> Searchbar<'a> {
         self.state = new_state;
     }
 
-    pub(crate) fn search(&mut self) {
-        self.input.clear_lines();
-        self.input.move_cursor(CursorMove::Head);
+    pub(crate) fn clear_search(&mut self) {
+        self.input.clear();
+        self.input.cursor = (0, 0);
+    }
+
+    pub(crate) fn get_search_text(&self) -> &str {
+        self.input.get_text()
     }
 }
 
@@ -48,7 +57,7 @@ impl<'a> Widget for Searchbar<'a> {
 
         let (mode_span, key_hint_span, cursor_style) = match self.state {
             ComponentState::Active => (
-                Span::styled(" <| SEARCH |>", Style::default().add_modifier(Modifier::BOLD).fg(Color::Green)),
+                Span::styled(" <| SEARCH |>", Style::default().add_modifier(Modifier::BOLD).fg(self.mode_info)),
                 Span::styled(
                     " | <Alt-q> quit | <Alt-s/l/d/n> save/load/delete/new | <Alt-t> edit title | ",
                     Style::default().add_modifier(Modifier::BOLD),
