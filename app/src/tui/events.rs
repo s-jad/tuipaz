@@ -268,7 +268,7 @@ impl Events {
                         },
                         Some(ActiveWidget::Searchbar) => {
                             app.searchbar.input.input(input);
-                            let search_pattern = &app.searchbar.input.lines()[0];
+                            let search_pattern = &app.searchbar.get_search_text();
                             match app.editor.body.set_search_pattern(search_pattern) {
                                 Ok(_) => info!("Searching for {:?}", search_pattern),
                                 Err(e) => error!("Error searching for {:?}: {:?}", search_pattern, e),
