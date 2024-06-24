@@ -17,6 +17,17 @@ const DELETE_COMMANDS: [char; 7] = ['d', 'w', 'b', 'j', 'k', 'l', 'h'];
 const YANK_COMMANDS: [char; 6] = ['w', 'b', 'j', 'k', 'l', 'h'];
 const GOTO_COMMAND: char = 'g';
 
+
+#[derive(Debug, Clone)]
+pub(crate) struct EditorTheme {
+    pub(crate) normal_mode: Color,
+    pub(crate) insert_mode: Color,
+    pub(crate) visual_mode: Color,
+    pub(crate) search_mode: Color,
+    pub(crate) select: Color,
+    pub(crate) search: Color,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Editor<'a> {
     pub(crate) title: String,
@@ -33,8 +44,7 @@ pub(crate) struct Editor<'a> {
     pub(crate) sidebar_open: bool,
     pub(crate) searchbar_open: bool,
     pub(crate) state: ComponentState,
-    pub(crate) max_col: u16,
-    pub(crate) hop_indexes: Vec<(usize, (usize, usize))>,
+    pub(crate) theme: EditorTheme,
 }
 
 #[derive(Debug, Clone)]
@@ -121,6 +131,7 @@ impl<'a> Editor<'a> {
         note_id: Option<i64>,
         sidebar_open: bool,
         max_col: u16,
+        theme: EditorTheme,
     ) -> Self {
         let ta_links = links
             .values()
@@ -149,9 +160,32 @@ impl<'a> Editor<'a> {
             sidebar_open,
             searchbar_open: false,
             state: ComponentState::Active,
-            max_col,
-            hop_indexes: Vec::new(),
+            theme,
         }
+    }
+
+    pub(crate) fn refresh(
+        &mut self,
+        title: String,
+        body: Vec<String>,
+        links: HashMap<i64, Link>, 
+        note_id: Option<i64>,
+        max_col: u16,
+    ) {
+        let ta_links = links
+            .values()
+            .map(|link| (link.text_id as usize, link.to_textarea_link()))
+            .collect::<HashMap<usize,TextAreaLink>>();
+
+        let mut body = TextArea::new(body, ta_links, max_col);
+        body.set_cursor_line_style(Style::default());
+        body.set_selection_style(Style::default().bg(Color::Red));
+        body.set_max_histories(100);
+
+        self.title = title;
+        self.body = body;
+        self.links = links;
+        self.note_id = note_id;
     }
 
     pub(crate) fn set_state(&mut self, new_state: ComponentState) {
@@ -1068,6 +1102,7 @@ impl<'a> Editor<'a> {
         self.cmd_buf.clear();
         self.num_buf.clear();
         self.cmd_state = CommandState::NoCommand;
+        self.mode = EditorMode::Insert;
     }
 
     fn repeat_action<F>(&mut self, num_buf_len: u32, mut action: F)
@@ -1157,6 +1192,7 @@ impl<'a> Widget for Editor<'a> {
         };
 
         let feh_len = file_explorer_hint_text.len();
+
         let title_text = format!(" {} ", self.title);
         let title = Span::styled(title_text, title_style);
         let file_explorer_hint = Span::styled(file_explorer_hint_text, Style::default().add_modifier(Modifier::BOLD));
@@ -1204,6 +1240,15 @@ impl<'a> Widget for Editor<'a> {
 
 mod tests {
     use super::*;
+    
+    const THEME: EditorTheme = EditorTheme {
+        normal_mode: Color::default(),
+        insert_mode: Color::default(),
+        visual_mode: Color::default(),
+        search_mode: Color::default(),
+        select: Color::default(),
+        search: Color::default(),
+    };
 
     #[test]
     fn test_execute_delete_dd_no_links() {
@@ -1214,6 +1259,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1231,6 +1277,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(1, 0));
@@ -1247,6 +1294,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1264,6 +1312,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1281,6 +1330,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
 
         editor.set_mode(EditorMode::Normal);
@@ -1299,6 +1349,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![2];
@@ -1315,7 +1366,8 @@ mod tests {
             HashMap::new(),
             None,
             false,
-            140
+            140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1331,6 +1383,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::End);
@@ -1347,6 +1400,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1364,6 +1418,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![3];
@@ -1381,6 +1436,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![1, 2];
@@ -1402,6 +1458,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(4,0));
@@ -1421,6 +1478,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![3];
@@ -1441,6 +1499,7 @@ mod tests {
             None,
             false,
             140,
+            THEME,
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0,0));
