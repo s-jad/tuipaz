@@ -9,13 +9,13 @@ use tuipaz_textarea::Link as TextAreaLink;
 
 use super::{
     buttons::{Button, ButtonAction},
-    editor::Editor,
+    editor::{Editor, EditorTheme},
     events::Events,
     inputs::{InputAction, UserInput},
     note_list::{NoteList, NoteListAction, NoteListMode},
     ui::ui,
     user_messages::UserMessage,
-    utils::Tui, searchbar::Searchbar,
+    utils::Tui, searchbar::Searchbar, config::Config,
 };
 
 #[derive(PartialEq, Debug, Default, Clone, Copy)]
@@ -69,6 +69,7 @@ pub(crate) enum SearchbarState {
 #[derive(Debug)]
 pub(crate) struct App<'a> {
     pub(crate) state: AppState,
+    pub(crate) config: Config,
     pub(crate) db: Pool<Sqlite>,
     pub(crate) current_screen: Screen,
     pub(crate) prev_screen: Screen,
@@ -88,7 +89,7 @@ pub(crate) struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    pub fn new(db: Pool<Sqlite>, note_identifiers: Vec<NoteIdentifier>, term_size: u16) -> Self {
+    pub fn new(config: Config, db: Pool<Sqlite>, note_identifiers: Vec<NoteIdentifier>, term_size: u16) -> Self {
         let load_btn_state = match note_identifiers.len() {
             0 => ComponentState::Unavailable,
             _ => ComponentState::Inactive,
@@ -101,13 +102,30 @@ impl<'a> App<'a> {
         );
         
         let max_col = term_size - 4;
+        let editor_theme = EditorTheme {
+            normal_mode: config.theme.modes.normal_mode,
+            insert_mode: config.theme.modes.insert_mode,
+            visual_mode: config.theme.modes.visual_mode,
+            search_mode: config.theme.modes.search_mode,
+            select: config.theme.select,
+            search: config.theme.search,
+        };
 
         Self {
             state: AppState::default(),
+            config,
             db,
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
-            editor: Editor::new(" Untitled ".to_owned(), vec!["".to_owned()], HashMap::new(), None, false, max_col),
+            editor: Editor::new(
+                " Untitled ".to_owned(),
+                vec!["".to_owned()],
+                HashMap::new(),
+                None,
+                false,
+                max_col,
+                editor_theme,
+            ),
             note_list,
             btns: [
                     Button::new(
