@@ -9,13 +9,14 @@ pub(crate) struct Searchbar<'a> {
     pub(crate) input: TextInput<'a>,
     pub(crate) sidebar_open: bool,
     pub(crate) state: ComponentState,
-    pub(crate) mode_info: Color,
+    pub(crate) theme: SearchbarTheme,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct SearchbarTheme {
     pub(crate) text: Color,
-    pub(crate) mode_info: Color,
+    pub(crate) search_mode: Color,
+    pub(crate) borders: Color,
 }
 
 impl<'a> Searchbar<'a> {
@@ -26,7 +27,7 @@ impl<'a> Searchbar<'a> {
             input,
             sidebar_open,
             state,
-            mode_info: theme.mode_info, 
+            theme, 
         }
     }
 
@@ -57,7 +58,7 @@ impl<'a> Widget for Searchbar<'a> {
 
         let (mode_span, key_hint_span, cursor_style) = match self.state {
             ComponentState::Active => (
-                Span::styled(" <| SEARCH |>", Style::default().add_modifier(Modifier::BOLD).fg(self.mode_info)),
+                Span::styled(" <| SEARCH |>", Style::default().add_modifier(Modifier::BOLD).fg(self.theme.search_mode)),
                 Span::styled(
                     " | <Alt-q> quit | <Alt-s/l/d/n> save/load/delete/new | <Alt-t> edit title | ",
                     Style::default().add_modifier(Modifier::BOLD),
@@ -106,9 +107,11 @@ impl<'a> Widget for Searchbar<'a> {
                 horizontal_bottom: "─",
                 horizontal_top: " ",
             })
+            .border_style(Style::default().fg(self.theme.borders))
             .padding(Padding { left: 1, right: 1, top: 0, bottom: 0 });
 
         self.input.set_block(search_block);
+        self.input.set_text_style(self.theme.text);
         self.input.set_cursor_style(cursor_style);
         self.input.set_placeholder_text("...");
 
