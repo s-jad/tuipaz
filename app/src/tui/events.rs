@@ -28,6 +28,39 @@ const DELETE_KEYS: [Key; 10] = [
     Key::Backspace,
 ];
 
+#[derive(Debug, Clone)]
+pub(crate) enum Action {
+    ShowExitScreen,
+    PrevScreen,
+    SwitchBtns,
+    ButtonAction,
+    Quit,
+    Save,
+    Load,
+    Delete,
+    NewNote,
+    NewTitle,
+    OpenNoteList,
+    Search,
+    ToggleSearchbar(Input),
+    ToggleSidebar,
+    IncreaseSidebar,
+    DecreaseSidebar,
+    InsertLink(Input),
+    SwitchActiveWidget,
+    LoadSelectedNote,
+    Confirm,
+    Cancel,
+    Activate(Input),
+    Up(Input),
+    Down(Input),
+    Next,
+    Prev,
+    DeleteChar,
+    Edit(Input),
+    Null,
+}
+
 pub(crate) struct Events {}
 
 impl Events {
@@ -41,6 +74,307 @@ impl Events {
         }
     }
 
+    async fn execute_action(app: &mut App<'_>, action: Action) -> Result<()> {
+        match (app.current_screen, action) {
+            (Screen::Welcome, Action::ShowExitScreen) => {
+                app.prev_screen = app.current_screen;
+                Self::show_exit_screen(app);
+            },
+            (Screen::Welcome, Action::SwitchBtns) => {
+                Self::switch_btns(app);
+            },
+            (Screen::Welcome, Action::ButtonAction) => {
+                let btn_state = app.current_btn().get_state();
+
+                if btn_state == ComponentState::Active {
+                    Self::btn_action(app);
+                }
+            }
+            (Screen::Main, Action::ShowExitScreen) => {
+                app.prev_screen = app.current_screen;
+                Self::show_exit_screen(app);
+            }
+            (Screen::Main, Action::Save) => {
+                let has_links = !matches!(app.editor.body.links.len(), 0);
+                let title = app.editor.title.clone();
+                let body = app.editor.body.lines().join("\n");
+                let note_id = app.editor.note_id;
+
+                Self::save_note(app, &title, &body, has_links, note_id).await?;
+            }
+            (Screen::Main, Action::Load) => {
+                app.prev_screen = app.current_screen;
+                app.switch_to_load_note();
+            }
+            (Screen::Main, Action::NewNote) => {
+                app.prev_screen = app.current_screen;
+                app.switch_to_new_note(InputAction::Note);
+            }
+            (Screen::Main, Action::NewTitle) => {
+                app.prev_screen = app.current_screen;
+                app.switch_to_new_note(InputAction::NoteTitle);
+            }
+            (Screen::Main, Action::Delete) => {
+                app.prev_screen = app.current_screen;
+                app.current_screen = Screen::DeleteNoteConfirmation;
+                app.user_msg = UserMessage::new(
+                    format!("Are you sure you want to delete {}? (y/n)", app.editor.title),
+                    MessageType::Warning,
+                    None,
+                );
+            }
+            (Screen::Main, Action::ToggleSearchbar(input)) => {
+                if app.editor.mode == EditorMode::Normal {
+                    Self::toggle_searchbar(app);
+                } else {
+                    app.editor.handle_input(input);
+                }
+            }
+            (Screen::Main, Action::ToggleSidebar) => {
+                Self::toggle_sidebar(app);
+            }
+            (Screen::Main, Action::IncreaseSidebar) => {
+                match app.sidebar_state {
+                    SidebarState::Open => {
+                        app.sidebar_size = cmp::min(app.sidebar_size + 2, 70);
+                    },
+                    SidebarState::Hidden(_) => {},
+                }
+            }
+            (Screen::Main, Action::DecreaseSidebar) => {
+                match app.sidebar_state {
+                    SidebarState::Open => {
+                        app.sidebar_size = cmp::max(app.sidebar_size - 2, 12);
+                    },
+                    SidebarState::Hidden(_) => {},
+                }
+            }
+            (Screen::Main, Action::InsertLink(input)) => {
+                app.editor.handle_input(input);
+
+                // If there is a new link in the textarea
+                if app.editor.body.new_link {
+                    app.pending_link = Some(
+                        *app.editor
+                        .body
+                        .links
+                        .get(&(app.editor.body.next_link_id - 1))
+                        .expect("Link should be present")
+                    );
+
+                    // Set the user_input widget to create a new linked note
+                    app.prev_screen = app.current_screen;
+                    app.current_screen = Screen::NewLinkedNote;
+                    app.user_input.set_action(InputAction::LinkedNote);
+                    app.user_input.set_state(ComponentState::Active);
+                    app.active_widget = Some(ActiveWidget::NoteTitleInput);
+                    app.note_list.set_state(ComponentState::Inactive);
+                    app.note_list.set_mode(NoteListMode::Fullscreen);
+                    app.note_list.set_action(NoteListAction::LinkNote);
+                    app.editor.body.new_link = false;
+                }
+            }
+           (Screen::Main, Action::SwitchActiveWidget) => match app.active_widget {
+                Some(ActiveWidget::Editor) => app.set_active_widget(ActiveWidget::Sidebar),
+                Some(ActiveWidget::Sidebar) => app.set_active_widget(ActiveWidget::Editor),
+                Some(_) | None => {}
+            }
+            (Screen::Main, Action::Activate(input)) => match app.active_widget {
+                Some(ActiveWidget::Editor) => {
+                    match app.editor.body.in_link(app.editor.body.cursor()) {
+                        Some(link_id) => {
+                            let linked_note_id = app
+                                .editor
+                                .links
+                                .values()
+                                .find(|link| link.text_id == link_id as i64)
+                                .expect("Link should be set up")
+                                .linked_id;
+
+                            Self::load_note(app, linked_note_id).await?;
+                        }
+                        None => {
+                            app.editor.body.input(input);
+                        }
+                    }
+                },
+                Some(ActiveWidget::Sidebar) => {
+                    let note_idx = app.note_list.selected;
+                    let id = app.note_list.note_identifiers[note_idx].id;
+                    Self::load_note(app, id).await?;
+                },
+                Some(ActiveWidget::Searchbar) => {
+                    app.searchbar.clear_search();
+                    Self::toggle_searchbar(app);
+                },
+                Some(_) | None => {},
+            }
+            (Screen::Main, Action::Up(input)) => match app.active_widget {
+                Some(ActiveWidget::Editor) => app.editor.handle_input(input),
+                Some(ActiveWidget::Sidebar) => app.note_list.prev(),
+                Some(_) | None => {},
+            }
+            (Screen::Main, Action::Down(input)) => match app.active_widget {
+                Some(ActiveWidget::Editor) => app.editor.handle_input(input),
+                Some(ActiveWidget::Sidebar) => app.note_list.next(),
+                Some(_) | None => {},
+            }
+            (Screen::Main, Action::Edit(input)) => match app.active_widget {
+                Some(ActiveWidget::Editor) => {
+                    app.editor.handle_input(input);
+
+                    if let Some(key) = DELETE_KEYS.iter().find(|&&k| k == input.key) {
+                        Self::check_link_deletion(app, key);
+                    }
+
+                    if input.key == Key::Char('u') || input.key == Key::Char('r') {
+                        Self::check_link_edits(app);
+                    }
+
+                    if !app.editor.links.is_empty() {
+                        Self::check_link_moved(app);
+                    }
+                },
+                Some(ActiveWidget::Searchbar) => {
+                    app.searchbar.input.input(input);
+                    let search_pattern = &app.searchbar.get_search_text();
+                    match app.editor.body.set_search_pattern(search_pattern) {
+                        Ok(_) => info!("Searching for {:?}", search_pattern),
+                        Err(e) => error!("Error searching for {:?}: {:?}", search_pattern, e),
+                    }
+                }
+                Some(_) | None => {},
+            }
+            (Screen::NewNote, Action::ShowExitScreen) => {
+                app.prev_screen = app.current_screen;
+                Self::show_exit_screen(app);
+            },
+            (Screen::NewNote, Action::PrevScreen) => {
+                app.current_screen = app.prev_screen;
+                app.active_widget = Some(ActiveWidget::Editor);
+            },
+            (Screen::NewNote, Action::Activate(_)) => match app.user_input.get_action() {
+                InputAction::NoteTitle => Self::input_new_note_title(app),
+                InputAction::Note => Self::input_new_note(app, false).await?,
+                _ => {}
+            },
+            (Screen::NewNote, Action::DeleteChar) => {
+                app.user_input.text.delete_char();
+                if app.user_input.get_state() == ComponentState::Error {
+                    app.user_input.set_state(ComponentState::Active);
+                }
+            },
+           (Screen::NewNote, Action::Edit(input)) => {
+                app.user_input.text.input(input);
+            },
+            (Screen::NewLinkedNote, Action::ShowExitScreen) => {
+                app.prev_screen = app.current_screen;
+                Self::show_exit_screen(app);
+            }
+            (Screen::NewLinkedNote, Action::PrevScreen) => {
+                app.current_screen = app.prev_screen;
+                app.note_list.set_mode(NoteListMode::Sidebar);
+                app.note_list.set_action(NoteListAction::LoadNote);
+                app.active_widget = Some(ActiveWidget::Editor);
+                app.editor.body.delete_link(app.editor.body.next_link_id - 1);
+                
+            }
+            (Screen::NewLinkedNote, Action::Activate(_)) => {
+                if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
+                    Self::input_new_note(app, true).await?;
+                } else if app.active_widget == Some(ActiveWidget::NoteList) {
+                    let selected = app.note_list.selected;
+                    let nid = &app.note_list.note_identifiers[selected];
+                    Self::link_note(app, nid.id);
+                }
+            }
+            (Screen::NewLinkedNote, Action::Next) => {
+                if app.active_widget == Some(ActiveWidget::NoteList) {
+                    app.note_list.next();
+                }
+            }
+            (Screen::NewLinkedNote, Action::Prev) => {
+                if app.active_widget == Some(ActiveWidget::NoteList) {
+                    app.note_list.prev();
+                }
+            }
+            (Screen::NewLinkedNote, Action::SwitchActiveWidget) => {
+                if app.active_widget == Some(ActiveWidget::NoteList) {
+                    app.set_active_widget(ActiveWidget::NoteTitleInput);
+                } else if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
+                    app.set_active_widget(ActiveWidget::NoteList);
+                }
+            }
+            (Screen::NewLinkedNote, Action::DeleteChar) => {
+                if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
+                    app.user_input.text.delete_char();
+                    if app.user_input.get_state() == ComponentState::Error {
+                        app.user_input.set_state(ComponentState::Active);
+                    }
+                }
+            }
+            (Screen::NewLinkedNote, Action::Edit(input)) => {
+                if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
+                    app.user_input.text.input(input);
+                }
+            }
+            (Screen::LoadNote, Action::ShowExitScreen) => {
+                app.prev_screen = app.current_screen;
+                Self::show_exit_screen(app);
+            }
+            (Screen::LoadNote, Action::PrevScreen) => {
+                app.switch_to_main();
+            }
+            (Screen::LoadNote, Action::Next) => {
+                app.note_list.next();
+            }
+            (Screen::LoadNote, Action::Prev) => {
+                app.note_list.prev();
+            }
+            (Screen::LoadNote, Action::LoadSelectedNote) => {
+                let note_idx = app.note_list.selected;
+                let id = app.note_list.note_identifiers[note_idx].id;
+                Self::load_note(app, id).await?;
+            }
+            (Screen::Popup, _) => {
+                if let Some(screen) = app.user_msg.next_screen {
+                    app.current_screen = screen;
+                } else {
+                    app.current_screen = app.prev_screen;
+                }
+            },
+            (Screen::DeleteNoteConfirmation, Action::PrevScreen) => {
+                app.current_screen = app.prev_screen;
+            }
+            (Screen::DeleteNoteConfirmation, Action::Confirm) => {
+                if let Some(note_id) = app.editor.note_id {
+                    DbMac::delete_note(&app.db, note_id).await?;
+                    app.note_list.remove(note_id);
+                    app.current_screen = Screen::Welcome;
+                } else {
+                    app.current_screen = Screen::Popup;
+                    app.user_msg = UserMessage::new(
+                        format!("Error: couldn't delete {}", app.editor.title),
+                        MessageType::Error,
+                        Some(Screen::Main),
+                    );
+                }
+            }
+            (Screen::DeleteNoteConfirmation, Action::Cancel) => {
+                app.current_screen = app.prev_screen;
+                app.active_widget = Some(ActiveWidget::Editor);
+            }
+            (Screen::Exiting, Action::Confirm) => {
+                Self::exit(app);
+            },
+            (Screen::Exiting, Action::Cancel) => {
+                    app.current_screen = app.prev_screen;
+                    app.active_widget = Some(ActiveWidget::Editor);
+            }
+            _ => {}
+        }
+        Ok(())
+    }
     async fn handle_key_event(app: &mut App<'_>, input: Input) -> Result<()> {
         match app.current_screen {
             Screen::Welcome => match input {
