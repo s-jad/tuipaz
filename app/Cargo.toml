@@ -17,4 +17,4 @@ serde = { version = "1.0.203", features = ["derive"] }
 sqlx = { version = "0.7.4", features = ["runtime-tokio-native-tls", "sqlite"] }
 tokio = { version = "1.37.0", features = ["macros", "rt-multi-thread"] }
 toml = "0.8.14"
-tuipaz-textarea = { path = "./libs/tuipaz-textarea", features = ["search"] }
+tuipaz-textarea = { path = "./libs/tuipaz-textarea" }
