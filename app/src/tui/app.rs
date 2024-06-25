@@ -12,7 +12,7 @@ use super::{
     editor::{Editor, EditorTheme},
     events::Events,
     inputs::{InputAction, UserInput},
-    note_list::{NoteList, NoteListAction, NoteListMode},
+    note_list::{NoteList, NoteListAction, NoteListMode, NoteListTheme, SelectionStyle},
     ui::ui,
     user_messages::UserMessage,
     utils::Tui, searchbar::{Searchbar, SearchbarTheme}, config::Config,
@@ -94,22 +94,16 @@ impl<'a> App<'a> {
             0 => ComponentState::Unavailable,
             _ => ComponentState::Inactive,
         };
-
-        let note_list = NoteList::new(
-            note_identifiers,
-            NoteListAction::LoadNote,
-            ComponentState::Active,
-        );
         
         let max_col = term_size - 4;
+
         let editor_theme = EditorTheme {
             title: config.theme.title,
             text: config.theme.text,
-            boundaries: config.theme.boundaries,
+            borders: config.theme.borders,
             normal_mode: config.theme.modes.normal_mode,
             insert_mode: config.theme.modes.insert_mode,
             visual_mode: config.theme.modes.visual_mode,
-            search_mode: config.theme.modes.search_mode,
             select: config.theme.highlights.select,
             search: config.theme.highlights.search,
             links: config.theme.highlights.links,
@@ -117,8 +111,27 @@ impl<'a> App<'a> {
 
         let search_theme = SearchbarTheme {
             text: config.theme.text, 
-            mode_info: config.theme.modes.search_mode,
+            search_mode: config.theme.modes.search_mode,
+            borders: config.theme.borders,
         };
+
+        let note_list_theme = NoteListTheme {
+            text: config.theme.text,
+            title: config.theme.title,
+            selection_style: SelectionStyle {
+                highlight: config.theme.notelist.selection_highlight,
+                pointer: config.theme.notelist.selection_symbol.to_owned(),
+                modifier: config.theme.notelist.selection_modifier,
+            },
+            borders: config.theme.borders,
+        };
+
+        let note_list = NoteList::new(
+            note_identifiers,
+            NoteListAction::LoadNote,
+            ComponentState::Active,
+            note_list_theme,
+        );
 
         Self {
             state: AppState::default(),
