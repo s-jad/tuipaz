@@ -1,7 +1,7 @@
 use std::{fs, num::ParseIntError, fmt::{Display, self}, error::Error, env, collections::HashMap};
 
 use log::info;
-use ratatui::style::{Color, self};
+use ratatui::style::{Color, self, Modifier};
 use serde::{Deserialize, de::{MapAccess, Visitor}};
 
 #[derive(Debug, Clone)]
@@ -37,6 +37,121 @@ impl<'de> Deserialize<'de> for Colors {
     }
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct TempTheme {
+    pub(crate) title: String,
+    pub(crate) text: String,
+    pub(crate) borders: String,
+    pub(crate) normal_mode: String,
+    pub(crate) insert_mode: String,
+    pub(crate) visual_mode: String,
+    pub(crate) search_mode: String,
+    pub(crate) links: String,
+    pub(crate) select: String,
+    pub(crate) search: String,
+    pub(crate) hop: String,
+    pub(crate) notelist: NoteListTheme,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct NoteListTheme {
+    pub(crate) selection_modifier: Modifier,
+    pub(crate) selection_symbol: String,
+    pub(crate) selection_highlight: Color,
+}
+
+impl NoteListTheme {
+    fn default() -> Self {
+        Self {
+            selection_modifier: Modifier::BOLD,
+            selection_symbol: ">> ".to_string(),
+            selection_highlight: Color::Magenta,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for NoteListTheme {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de> 
+    {
+        struct NLTVisitor;
+
+        impl<'de> Visitor<'de> for NLTVisitor {
+            type Value = NoteListTheme;
+            
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("Expecting a key and note list theme value")
+            }
+
+            fn visit_map<M>(self, mut access: M) -> Result<NoteListTheme, M::Error> 
+            where 
+                M: MapAccess<'de>
+            {
+                let mut nlt = NoteListTheme::default();
+
+                while let Some((key, hex)) = access.next_entry::<String, String>()? {
+                    match key.as_str() {
+                        "selection_modifier" => {
+                            nlt.selection_modifier = match hex.as_str() {
+                                "bold" => {
+                                   Modifier::BOLD 
+                                },
+                                "italic" => {
+                                    Modifier::ITALIC
+                                },
+                                "underlined" => {
+                                    Modifier::UNDERLINED
+                                },
+                                "reversed" => {
+                                    Modifier::REVERSED
+                                },
+                                _ => Modifier::BOLD
+                            }
+                        },
+                        "selection_symbol" => {
+                            nlt.selection_symbol = hex.to_owned()
+                        },
+                        "selection_highlight" => {
+                            nlt.selection_highlight = 
+                                try_convert_color(Some(hex), Color::Magenta).unwrap_or(Color::Magenta)
+                        },
+                        _ => {}
+                    }
+                }
+                Ok(nlt)
+            }
+        }
+        deserializer.deserialize_map(NLTVisitor)
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct Theme {
+    pub(crate) title: Color,
+    pub(crate) text: Color,
+    pub(crate) modes: ModeColors,
+    pub(crate) highlights: HighlightColors,
+    pub(crate) borders: Color,
+    pub(crate) notelist: NoteListTheme,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct HighlightColors {
+    pub(crate) links: Color,
+    pub(crate) select: Color,
+    pub(crate) search: Color,
+    pub(crate) hop: Color,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct ModeColors {
+    pub(crate) normal_mode: Color,
+    pub(crate) insert_mode: Color,
+    pub(crate) visual_mode: Color,
+    pub(crate) search_mode: Color,
+}
+
 #[derive(Debug)]
 enum HexColorError {
     InvalidFormat,
@@ -46,17 +161,6 @@ enum HexColorError {
 impl From<ParseIntError> for HexColorError {
     fn from(err: ParseIntError) -> HexColorError {
         HexColorError::ParseError(err)
-    }
-}
-
-#[derive(Debug)]
-pub(crate) struct ColorConversionError {
-    message: String,
-}
-
-impl Display for ColorConversionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
     }
 }
 
@@ -70,6 +174,17 @@ fn hex_to_color(hex: &str) -> Result<style::Color, HexColorError> {
     Ok(style::Color::Rgb(r, g, b))
 }
 
+#[derive(Debug)]
+pub(crate) struct ColorConversionError {
+    message: String,
+}
+
+impl Display for ColorConversionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
 fn try_convert_color(user_color: Option<String>, default: Color) -> Result<Color, ColorConversionError> {
     if let Some(c) = user_color {
         match hex_to_color(&c) {
@@ -81,58 +196,22 @@ fn try_convert_color(user_color: Option<String>, default: Color) -> Result<Color
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct Theme {
-    pub(crate) title: Color,
-    pub(crate) text: Color,
-    pub(crate) modes: ModeColors,
-    pub(crate) highlights: HighlightColors,
-    pub(crate) boundaries: Color,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct TempTheme {
-    pub(crate) title: String,
-    pub(crate) text: String,
-    pub(crate) boundaries: String,
-    pub(crate) normal_mode: String,
-    pub(crate) insert_mode: String,
-    pub(crate) visual_mode: String,
-    pub(crate) search_mode: String,
-    pub(crate) links: String,
-    pub(crate) select: String,
-    pub(crate) search: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct HighlightColors {
-    pub(crate) links: Color,
-    pub(crate) select: Color,
-    pub(crate) search: Color,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct ModeColors {
-    pub(crate) normal_mode: Color,
-    pub(crate) insert_mode: Color,
-    pub(crate) visual_mode: Color,
-    pub(crate) search_mode: Color,
-}
-
 impl Theme {
     fn new(
         title: Color,
         text: Color,
         modes: ModeColors,
         highlights: HighlightColors,
-        boundaries: Color,
+        borders: Color,
+        notelist: NoteListTheme,
     ) -> Self {
         Self {
             title,
             text,
             modes,
             highlights,
-            boundaries,
+            borders,
+            notelist
         }
     }
 
@@ -150,8 +229,14 @@ impl Theme {
                 links: Color::Blue,
                 select: Color::Magenta,
                 search: Color::Red,
+                hop: Color::LightRed,
             },
-            boundaries: Color::default(),
+            borders: Color::default(),
+            notelist: NoteListTheme {
+                selection_modifier: Modifier::BOLD,
+                selection_symbol: ">> ".to_string(),
+                selection_highlight: Color::Magenta,
+            }
         }
     }
 }
@@ -254,7 +339,7 @@ fn get_theme(temp_config: TempConfig) -> Result<Theme, ConfigError> {
         (temp_config.colors.0.get(&temp_config.theme.links).cloned(),
         default_theme.highlights.links
     )?;
-    let select  = try_convert_color(
+    let select = try_convert_color(
         temp_config.colors.0.get(&temp_config.theme.select).cloned(),
         default_theme.highlights.select
     )?;
@@ -262,15 +347,20 @@ fn get_theme(temp_config: TempConfig) -> Result<Theme, ConfigError> {
         temp_config.colors.0.get(&temp_config.theme.search).cloned(),
         default_theme.highlights.search
     )?;
-    let boundaries = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.boundaries).cloned(),
-        default_theme.boundaries
+    let hop = try_convert_color(
+        temp_config.colors.0.get(&temp_config.theme.hop).cloned(),
+        default_theme.highlights.hop
+    )?;
+    let borders = try_convert_color(
+        temp_config.colors.0.get(&temp_config.theme.borders).cloned(),
+        default_theme.borders
     )?;
     
     let highlights = HighlightColors {
         links,
         select,
         search,
+        hop,
     };
     let modes = ModeColors {
         normal_mode,
@@ -284,7 +374,8 @@ fn get_theme(temp_config: TempConfig) -> Result<Theme, ConfigError> {
         text, 
         modes,
         highlights,
-        boundaries
+        borders,
+        temp_config.theme.notelist,
     ))
 }
 
@@ -296,13 +387,11 @@ pub(crate) fn try_load_config() -> Result<Config, ConfigError> {
     // Sanity check - metadata means file exists
     if metadata.is_ok() {
         let content = fs::read_to_string(config_path)?;
-        info!("content: {:?}", content);
         let temp_cfg: TempConfig = toml::de::from_str(&content)?;
-        info!("toml_cfg: {:?}", temp_cfg);
-
         let cfg = Config::new(temp_cfg);
         info!("cfg: {:?}", cfg);
         cfg
+    // If no config file ... use defaults
     } else {
         let default_cfg = Config::default();
         info!("default_cfg: {:?}", default_cfg);
