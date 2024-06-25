@@ -23,6 +23,22 @@ pub(crate) enum NoteListMode {
     Fullscreen,
 }
 
+
+#[derive(Debug, Clone)]
+pub(crate) struct SelectionStyle {
+    pub(crate) highlight: Color,
+    pub(crate) pointer: String,
+    pub(crate) modifier: Modifier,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct NoteListTheme {
+    pub(crate) text: Color,
+    pub(crate) title: Color,
+    pub(crate) selection_style: SelectionStyle,
+    pub(crate) borders: Color,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct NoteList {
     pub(crate) selected: usize,
@@ -30,6 +46,7 @@ pub(crate) struct NoteList {
     pub(crate) action: NoteListAction,
     pub(crate) state: ComponentState,
     pub(crate) mode: NoteListMode,
+    pub(crate) theme: NoteListTheme
 }
 
 impl NoteList {
@@ -37,6 +54,7 @@ impl NoteList {
         note_identifiers: Vec<NoteIdentifier>,
         action: NoteListAction,
         state: ComponentState,
+        theme: NoteListTheme,
     ) -> Self {
         let selected = 0;
 
@@ -46,6 +64,7 @@ impl NoteList {
             action,
             state,
             mode: NoteListMode::Fullscreen,
+            theme,
         }
     }
 
@@ -135,15 +154,15 @@ impl Widget for NoteList {
             highlight_clr
         ) = match (self.state, self.mode) {
             (ComponentState::Active, NoteListMode::Fullscreen) => (
-                Style::default().bold(),
-                Style::default().bold().fg(Color::Yellow),
+                Style::default().bold().fg(self.theme.borders),
+                Style::default().bold().fg(self.theme.title),
                 Style::default().bold(),
                 Style::default(),
                 Color::Red,
             ),
             (ComponentState::Inactive, NoteListMode::Fullscreen) => (
-                Style::default().bold().dim(),
-                Style::default().bold().dim(),
+                Style::default().bold().fg(self.theme.borders).dim(),
+                Style::default().bold().fg(self.theme.title).dim(),
                 Style::default().bold().dim(),
                 Style::default().dim(),
                 Color::default(),
@@ -156,22 +175,22 @@ impl Widget for NoteList {
                 Color::default(),
             ),
             (ComponentState::Error, NoteListMode::Fullscreen) => (
-                Style::default().bold(),
+                Style::default().bold().fg(self.theme.borders),
                 Style::default().bold().fg(Color::Red),
                 Style::default().bold().fg(Color::Red),
                 Style::default(),
                 Color::Red,
             ),
             (ComponentState::Active, NoteListMode::Sidebar) => (
-                Style::default().bold(),
-                Style::default().bold().fg(Color::Yellow),
+                Style::default().bold().fg(self.theme.borders),
+                Style::default().bold().fg(self.theme.title),
                 Style::default().bold(),
                 Style::default(),
                 Color::Red,
             ),
             (ComponentState::Inactive, NoteListMode::Sidebar) => (
-                Style::default().bold(),
-                Style::default().bold().dim(),
+                Style::default().bold().fg(self.theme.borders).dim(),
+                Style::default().bold().fg(self.theme.title).dim(),
                 Style::default().bold().dim(),
                 Style::default().dim(),
                 Color::default(),
@@ -184,7 +203,6 @@ impl Widget for NoteList {
                 Color::Red,
             )
         };
-
 
         let info_line = Line::styled(info_text, list_info_style).alignment(Alignment::Center);
         let title = Span::styled(title_text, title_style);
@@ -205,8 +223,12 @@ impl Widget for NoteList {
                 .map(|nid| ListItem::new(Line::from(nid.title)).style(list_item_style)),
         )
         .block(load_note_block)
-        .highlight_style(Style::default().add_modifier(Modifier::BOLD).fg(highlight_clr))
-        .highlight_symbol(">> ")
+        .highlight_style(
+            Style::default()
+                .add_modifier(self.theme.selection_style.modifier)
+                .fg(self.theme.selection_style.highlight)
+        )
+        .highlight_symbol(&self.theme.selection_style.pointer)
         .repeat_highlight_symbol(true);
 
         StatefulWidget::render(list, area, buf, &mut state);
