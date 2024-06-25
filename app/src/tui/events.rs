@@ -28,12 +28,12 @@ const DELETE_KEYS: [Key; 10] = [
     Key::Backspace,
 ];
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 pub(crate) enum Action {
     ShowExitScreen,
     PrevScreen,
     SwitchBtns,
-    ButtonAction,
     Quit,
     Save,
     Load,
@@ -41,14 +41,12 @@ pub(crate) enum Action {
     NewNote,
     NewTitle,
     OpenNoteList,
-    Search,
     ToggleSearchbar(Input),
     ToggleSidebar,
     IncreaseSidebar,
     DecreaseSidebar,
     InsertLink(Input),
     SwitchActiveWidget,
-    LoadSelectedNote,
     Confirm,
     Cancel,
     Activate(Input),
@@ -60,6 +58,45 @@ pub(crate) enum Action {
     Edit(Input),
     Null,
 }
+
+ impl PartialEq for Action {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            // Compare variants without associated data
+            (Action::ShowExitScreen, Action::ShowExitScreen) => true,
+            (Action::PrevScreen, Action::PrevScreen) => true,
+            (Action::SwitchBtns, Action::SwitchBtns) => true,
+            (Action::Quit, Action::Quit) => true,
+            (Action::Save, Action::Save) => true,
+            (Action::Load, Action::Load) => true,
+            (Action::Delete, Action::Delete) => true,
+            (Action::NewNote, Action::NewNote) => true,
+            (Action::NewTitle, Action::NewTitle) => true,
+            (Action::OpenNoteList, Action::OpenNoteList) => true,
+            (Action::ToggleSearchbar(_), Action::ToggleSearchbar(_)) => true,
+            (Action::ToggleSidebar, Action::ToggleSidebar) => true,
+            (Action::IncreaseSidebar, Action::IncreaseSidebar) => true,
+            (Action::DecreaseSidebar, Action::DecreaseSidebar) => true,
+            (Action::InsertLink(_), Action::InsertLink(_)) => true,
+            (Action::SwitchActiveWidget, Action::SwitchActiveWidget) => true,
+            (Action::Confirm, Action::Confirm) => true,
+            (Action::Cancel, Action::Cancel) => true,
+            (Action::Activate(_), Action::Activate(_)) => true,
+            (Action::Up(_), Action::Up(_)) => true,
+            (Action::Down(_), Action::Down(_)) => true,
+            (Action::Next, Action::Next) => true,
+            (Action::Prev, Action::Prev) => true,
+            (Action::DeleteChar, Action::DeleteChar) => true,
+            (Action::Edit(_), Action::Edit(_)) => true,
+            (Action::Null, Action::Null) => true,
+
+            // Handle all other cases as unequal
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Action {}
 
 pub(crate) struct Events {}
 
@@ -83,7 +120,7 @@ impl Events {
             (Screen::Welcome, Action::SwitchBtns) => {
                 Self::switch_btns(app);
             },
-            (Screen::Welcome, Action::ButtonAction) => {
+            (Screen::Welcome, Action::Activate(_)) => {
                 let btn_state = app.current_btn().get_state();
 
                 if btn_state == ComponentState::Active {
@@ -331,7 +368,7 @@ impl Events {
             (Screen::LoadNote, Action::Prev) => {
                 app.note_list.prev();
             }
-            (Screen::LoadNote, Action::LoadSelectedNote) => {
+            (Screen::LoadNote, Action::Activate(_)) => {
                 let note_idx = app.note_list.selected;
                 let id = app.note_list.note_identifiers[note_idx].id;
                 Self::load_note(app, id).await?;
@@ -500,10 +537,6 @@ impl Events {
                     }
                 }
                 Input {
-                    key: Key::Char('['),
-                    ..
-                }
-                | Input {
                     key: Key::Char(']'),
                     ..
                 } => {
