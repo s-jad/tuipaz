@@ -7,6 +7,344 @@ use tuipaz_textarea::{Input, Key};
 
 use super::events::Action;
 
+pub(crate) fn get_action(action: &str, input: Input) -> Action {
+    match action {
+        "show_exit_screen" => Action::ShowExitScreen,
+        "prev_screen" => Action::PrevScreen,
+        "quit" => Action::Quit,
+        "save" => Action::Save,
+        "load" => Action::Load,
+        "delete" => Action::Delete,
+        "new_note" => Action::NewNote,
+        "new_title" => Action::NewTitle,
+        "open_note_list" => Action::OpenNoteList,
+        "toggle_searchbar" => Action::ToggleSearchbar(input),
+        "toggle_sidebar" => Action::ToggleSidebar,
+        "increase_sidebar" => Action::IncreaseSidebar,
+        "decrease_sidebar" => Action::DecreaseSidebar,
+        "switch_active_widget" => Action::SwitchActiveWidget,
+        _ => Action::Null,
+    }
+}
+
+fn complete_keymap(keymap: &mut HashMap<Action, Input>) {
+    let default_bindings = KeyMap::get_defaults();
+
+    for (a, i) in default_bindings.into_iter() {
+        if keymap.get(&a).is_none() {
+            keymap.insert(a, i);
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct KeyMap(HashMap<Action, Input>);
+
+impl KeyMap {
+    fn default() -> Self {
+        let defaults = Self::get_defaults();
+
+        KeyMap(defaults.into_iter().collect::<HashMap<Action, Input>>())
+    }
+
+    fn get_defaults() -> Vec<(Action, Input)> {
+        vec![
+            (
+                Action::ShowExitScreen,
+                Input {
+                    key: Key::Char('q'),
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::PrevScreen,
+                Input {
+                    key: Key::Esc,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Save,
+                Input {
+                    key: Key::Char('s'),
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Load,
+                Input {
+                    key: Key::Char('l'),
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Delete,
+                Input {
+                    key: Key::Char('d'),
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::NewNote,
+                Input {
+                    key: Key::Char('n'),
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::NewTitle,
+                Input {
+                    key: Key::Char('t'),
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::ToggleSidebar,
+                Input {
+                    key: Key::Char('f'),
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::IncreaseSidebar,
+                Input {
+                    key: Key::Char('.'),
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::DecreaseSidebar,
+                Input {
+                    key: Key::Char(','),
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::SwitchBtns,
+                Input {
+                    key: Key::Tab,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::SwitchActiveWidget,
+                Input {
+                    key: Key::Tab,
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Next,
+                Input {
+                    key: Key::Down,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Prev,
+                Input {
+                    key: Key::Up,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Confirm,
+                Input {
+                    key: Key::Char('y'),
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Cancel,
+                Input {
+                    key: Key::Char('n'),
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::DeleteChar,
+                Input {
+                    key: Key::Backspace,
+                    ctrl: false,
+                    alt: true,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Activate(Input {
+                    key: Key::Enter,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                }),
+                Input {
+                    key: Key::Enter,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Up(Input {
+                    key: Key::Up,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                }),
+                Input {
+                    key: Key::Up,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::Down(Input {
+                    key: Key::Down,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                }),
+                Input {
+                    key: Key::Down,
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::ToggleSearchbar(Input {
+                    key: Key::Char('/'),
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                }),
+                Input {
+                    key: Key::Char('/'),
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+            (
+                Action::InsertLink(Input {
+                    key: Key::Char(']'),
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                }),
+                Input {
+                    key: Key::Char(']'),
+                    ctrl: false,
+                    alt: false,
+                    shift: false,
+                },
+            ),
+        ]
+    }
+}
+
+impl<'de> Deserialize<'de> for KeyMap {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct KeyMapVisitor;
+
+        impl<'de> Visitor<'de> for KeyMapVisitor {
+            type Value = KeyMap;
+            
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("Expecting an action and a input")
+            }
+
+            fn visit_map<M>(self, mut access: M) -> Result<KeyMap, M::Error> 
+            where 
+                M: MapAccess<'de>
+            {
+                let mut key_map = HashMap::new();
+
+                while let Some((action, input)) = access.next_entry::<String, String>()? {
+                    let mut key = Key::Null;
+                    let mut ctrl = false;
+                    let mut alt = false;
+                    let mut shift = false;
+
+                    if input.contains('-') {
+                        let mut parts = input.split('-');
+                        let modifier_part = parts.next().ok_or_else(|| serde::de::Error::custom("Modifier part missing"))?;
+                        let key_part = parts.next().ok_or_else(|| serde::de::Error::custom("Key part missing"))?;
+                        
+                        key = match key_part.chars().next() {
+                            Some(c) => Key::Char(c),
+                            None => return Err(serde::de::Error::custom("Invalid key")),
+                        };
+
+                        ctrl = modifier_part.contains("ctrl");
+                        alt = modifier_part.contains("alt");
+                        shift = modifier_part.contains("shift");
+                    } else {
+                        match input.len() > 1 {
+                            true => {
+                                key = match input.as_str() {
+                                    "esc" => Key::Esc,
+                                    "tab" => Key::Tab,
+                                    "enter" => Key::Enter,
+                                    _ => Key::Null,
+                                };
+                            },
+                            false => {
+                                key = match input.chars().next() {
+                                    Some(c) => Key::Char(c),
+                                    None => return Err(serde::de::Error::custom("Invalid key")),
+                                };
+                            },
+                        }
+                    }                     
+
+                    let i = Input { key, ctrl, alt, shift };
+                    let a = get_action(&action, i);
+                    key_map.insert(a, i);
+                }
+                Ok(KeyMap(key_map))
+            }
+        }
+        deserializer.deserialize_map(KeyMapVisitor)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Colors(pub HashMap<String, String>);
 
@@ -38,22 +376,6 @@ impl<'de> Deserialize<'de> for Colors {
         }
         deserializer.deserialize_map(ColorMapVisitor)
     }
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct TempTheme {
-    pub(crate) title: String,
-    pub(crate) text: String,
-    pub(crate) borders: String,
-    pub(crate) normal_mode: String,
-    pub(crate) insert_mode: String,
-    pub(crate) visual_mode: String,
-    pub(crate) search_mode: String,
-    pub(crate) links: String,
-    pub(crate) select: String,
-    pub(crate) search: String,
-    pub(crate) hop: String,
-    pub(crate) notelist: NoteListTheme,
 }
 
 #[derive(Debug, Clone)]
@@ -130,6 +452,23 @@ impl<'de> Deserialize<'de> for NoteListTheme {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub(crate) struct TempTheme {
+    pub(crate) title: String,
+    pub(crate) text: String,
+    pub(crate) borders: String,
+    pub(crate) normal_mode: String,
+    pub(crate) insert_mode: String,
+    pub(crate) visual_mode: String,
+    pub(crate) search_mode: String,
+    pub(crate) links: String,
+    pub(crate) select: String,
+    pub(crate) search: String,
+    pub(crate) hop: String,
+    pub(crate) notelist: NoteListTheme,
+}
+
+
+#[derive(Debug, Clone, Deserialize)]
 pub(crate) struct Theme {
     pub(crate) title: Color,
     pub(crate) text: Color,
@@ -137,66 +476,6 @@ pub(crate) struct Theme {
     pub(crate) highlights: HighlightColors,
     pub(crate) borders: Color,
     pub(crate) notelist: NoteListTheme,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct HighlightColors {
-    pub(crate) links: Color,
-    pub(crate) select: Color,
-    pub(crate) search: Color,
-    pub(crate) hop: Color,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub(crate) struct ModeColors {
-    pub(crate) normal_mode: Color,
-    pub(crate) insert_mode: Color,
-    pub(crate) visual_mode: Color,
-    pub(crate) search_mode: Color,
-}
-
-#[derive(Debug)]
-enum HexColorError {
-    InvalidFormat,
-    ParseError(ParseIntError),
-}
-
-impl From<ParseIntError> for HexColorError {
-    fn from(err: ParseIntError) -> HexColorError {
-        HexColorError::ParseError(err)
-    }
-}
-
-fn hex_to_color(hex: &str) -> Result<style::Color, HexColorError> {
-    if hex.len()!= 7 ||!hex.starts_with('#') {
-        return Err(HexColorError::InvalidFormat);
-    }
-    let r = u8::from_str_radix(&hex[1..3], 16)?;
-    let g = u8::from_str_radix(&hex[3..5], 16)?;
-    let b = u8::from_str_radix(&hex[5..7], 16)?;
-    Ok(style::Color::Rgb(r, g, b))
-}
-
-#[derive(Debug)]
-pub(crate) struct ColorConversionError {
-    message: String,
-}
-
-impl Display for ColorConversionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-fn try_convert_color(user_color: Option<String>, default: Color) -> Result<Color, ColorConversionError> {
-    if let Some(c) = user_color {
-        match hex_to_color(&c) {
-            Ok(color) => Ok(color),
-            Err(e) => Err(ColorConversionError{ message: format!("Failed to convert '{}' to a color: {:?}", c, e) }),
-        }
-    } else {
-        Ok(default)
-    }
 }
 
 impl Theme {
@@ -244,103 +523,21 @@ impl Theme {
     }
 }
 
-pub(crate) fn get_action(action: &str, input: Input) -> Action {
-    match action {
-        "show_exit_screen" => Action::ShowExitScreen,
-        "prev_screen" => Action::PrevScreen,
-        "quit" => Action::Quit,
-        "save" => Action::Save,
-        "load" => Action::Load,
-        "delete" => Action::Delete,
-        "new_note" => Action::NewNote,
-        "new_title" => Action::NewTitle,
-        "open_note_list" => Action::OpenNoteList,
-        "toggle_searchbar" => Action::ToggleSearchbar(input),
-        "toggle_sidebar" => Action::ToggleSidebar,
-        "increase_sidebar" => Action::IncreaseSidebar,
-        "decrease_sidebar" => Action::DecreaseSidebar,
-        "switch_active_widget" => Action::SwitchActiveWidget,
-        "load_selected_note" => Action::LoadSelectedNote,
-        _ => Action::Null,
-    }
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct HighlightColors {
+    pub(crate) links: Color,
+    pub(crate) select: Color,
+    pub(crate) search: Color,
+    pub(crate) hop: Color,
 }
 
-#[derive(Debug, Clone)]
-pub(crate) struct KeyMap(HashMap<Input, Action>);
-
-impl<'de> Deserialize<'de> for KeyMap {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct KeyMapVisitor;
-
-        impl<'de> Visitor<'de> for KeyMapVisitor {
-            type Value = KeyMap;
-            
-            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-                formatter.write_str("Expecting an action and a input")
-            }
-
-            fn visit_map<M>(self, mut access: M) -> Result<KeyMap, M::Error> 
-            where 
-                M: MapAccess<'de>
-            {
-                let mut key_map = HashMap::new();
-
-                while let Some((action, input)) = access.next_entry::<String, String>()? {
-                    let mut key = Key::Null;
-                    let mut ctrl = false;
-                    let mut alt = false;
-                    let mut shift = false;
-                    info!("deserializer::input: {}", input);
-                    info!("deserializer::action: {}", action);
-                    if input.contains('-') {
-                        let mut parts = input.split('-');
-                        let modifier_part = parts.next().ok_or_else(|| serde::de::Error::custom("Modifier part missing"))?;
-                        let key_part = parts.next().ok_or_else(|| serde::de::Error::custom("Key part missing"))?;
-                        info!("deserializer::modifier_part: {:?}", modifier_part);
-                        info!("deserializer::key_part: {:?}", key_part);
-                        
-                        key = match key_part.chars().next() {
-                            Some(c) => Key::Char(c),
-                            None => return Err(serde::de::Error::custom("Invalid key")),
-                        };
-
-                        ctrl = modifier_part.contains("ctrl");
-                        alt = modifier_part.contains("alt");
-                        shift = modifier_part.contains("shift");
-                    } else {
-                        match input.len() > 1 {
-                            true => {
-                                key = match input.as_str() {
-                                    "esc" => Key::Esc,
-                                    "tab" => Key::Tab,
-                                    "enter" => Key::Enter,
-                                    _ => Key::Null,
-                                };
-                            },
-                            false => {
-                                key = match input.chars().next() {
-                                    Some(c) => Key::Char(c),
-                                    None => return Err(serde::de::Error::custom("Invalid key")),
-                                };
-                            },
-                        }
-                    }                     
-
-                    info!("deserializer::key: {:?}\n, ctrl: {}\n, alt: {}\n, shift: {}\n", key, ctrl, alt, shift);
-                    let i = Input { key, ctrl, alt, shift };
-                    let a = get_action(&action, i);
-                    key_map.insert(i, a);
-                }
-                Ok(KeyMap(key_map))
-            }
-        }
-        deserializer.deserialize_map(KeyMapVisitor)
-    }
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct ModeColors {
+    pub(crate) normal_mode: Color,
+    pub(crate) insert_mode: Color,
+    pub(crate) visual_mode: Color,
+    pub(crate) search_mode: Color,
 }
-
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct TempConfig {
@@ -352,13 +549,14 @@ pub(crate) struct TempConfig {
 #[derive(Debug, Clone)]
 pub(crate) struct Config {
     pub(crate) theme: Theme,
-    pub(crate) keymap: HashMap<Input, Action>,
+    pub(crate) keymap: HashMap<Action, Input>,
 }
 
 impl Config {
     fn new(temp_config: TempConfig) -> Result<Self, ConfigError> {
-        let keymap = temp_config.keymap.0.clone();
+        let mut keymap = temp_config.keymap.0.clone();
         let theme = get_theme(temp_config)?;
+        complete_keymap(&mut keymap);
 
         Ok(Self {
             theme,
@@ -413,6 +611,51 @@ impl Display for ConfigError {
 }
 
 impl Error for ConfigError {}
+
+#[derive(Debug)]
+enum HexColorError {
+    InvalidFormat,
+    ParseError(ParseIntError),
+}
+
+impl From<ParseIntError> for HexColorError {
+    fn from(err: ParseIntError) -> HexColorError {
+        HexColorError::ParseError(err)
+    }
+}
+
+fn hex_to_color(hex: &str) -> Result<style::Color, HexColorError> {
+    if hex.len()!= 7 ||!hex.starts_with('#') {
+        return Err(HexColorError::InvalidFormat);
+    }
+    let r = u8::from_str_radix(&hex[1..3], 16)?;
+    let g = u8::from_str_radix(&hex[3..5], 16)?;
+    let b = u8::from_str_radix(&hex[5..7], 16)?;
+    Ok(style::Color::Rgb(r, g, b))
+}
+
+#[derive(Debug)]
+pub(crate) struct ColorConversionError {
+    message: String,
+}
+
+impl Display for ColorConversionError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
+fn try_convert_color(user_color: Option<String>, default: Color) -> Result<Color, ColorConversionError> {
+    if let Some(c) = user_color {
+        match hex_to_color(&c) {
+            Ok(color) => Ok(color),
+            Err(e) => Err(ColorConversionError{ message: format!("Failed to convert '{}' to a color: {:?}", c, e) }),
+        }
+    } else {
+        Ok(default)
+    }
+}
+
 
 fn get_theme(temp_config: TempConfig) -> Result<Theme, ConfigError> {
     let default_theme = Theme::default();
@@ -494,7 +737,6 @@ pub(crate) fn try_load_config() -> Result<Config, ConfigError> {
     if metadata.is_ok() {
         let content = fs::read_to_string(config_path)?;
         let temp_cfg: TempConfig = toml::de::from_str(&content)?;
-        info!("temp_cfg: {:?}", temp_cfg);
         let cfg = Config::new(temp_cfg);
         info!("cfg: {:?}", cfg);
         cfg
