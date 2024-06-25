@@ -22,11 +22,10 @@ const GOTO_COMMAND: char = 'g';
 pub(crate) struct EditorTheme {
     pub(crate) title: Color,
     pub(crate) text: Color,
-    pub(crate) boundaries: Color,
+    pub(crate) borders: Color,
     pub(crate) normal_mode: Color,
     pub(crate) insert_mode: Color,
     pub(crate) visual_mode: Color,
-    pub(crate) search_mode: Color,
     pub(crate) select: Color,
     pub(crate) search: Color,
     pub(crate) links: Color,
@@ -1163,12 +1162,12 @@ impl<'a> Widget for Editor<'a> {
             ComponentState::Active => (
                 Style::default().bold().fg(self.theme.title),
                 Style::default().bold(),
-                Style::default()
+                Style::default().fg(self.theme.text)
             ),
             ComponentState::Inactive => (
                 Style::default().bold().fg(self.theme.title).dim(),
                 Style::default().bold().dim(),
-                Style::default().dim()
+                Style::default().fg(self.theme.text).dim()
             ),
             _ => (Style::default(), Style::default(), Style::default())
         };
@@ -1242,6 +1241,7 @@ impl<'a> Widget for Editor<'a> {
                 horizontal_top: "─",
                 horizontal_bottom: "─",
             })
+            .border_style(Style::default().fg(self.theme.borders))
             .padding(Padding::new(1, 1, 1, 1));
 
         self.body.set_block(editor_block);
@@ -1261,11 +1261,10 @@ mod tests {
     const THEME: EditorTheme = EditorTheme {
         title: THEME_COLOR,
         text: THEME_COLOR,
-        boundaries: THEME_COLOR,
+        borders: THEME_COLOR,
         normal_mode: THEME_COLOR,
         insert_mode: THEME_COLOR,
         visual_mode: THEME_COLOR,
-        search_mode: THEME_COLOR,
         select: THEME_COLOR,
         search: THEME_COLOR,
         links: THEME_COLOR,
