@@ -2,7 +2,10 @@ use std::{fs, num::ParseIntError, fmt::{Display, self}, error::Error, env, colle
 
 use log::info;
 use ratatui::style::{Color, self, Modifier};
-use serde::{Deserialize, de::{MapAccess, Visitor}};
+use serde::{Deserialize, de::{MapAccess, Visitor}, Deserializer};
+use tuipaz_textarea::{Input, Key};
+
+use super::events::Action;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Colors(pub HashMap<String, String>);
@@ -241,32 +244,135 @@ impl Theme {
     }
 }
 
+pub(crate) fn get_action(action: &str, input: Input) -> Action {
+    match action {
+        "show_exit_screen" => Action::ShowExitScreen,
+        "prev_screen" => Action::PrevScreen,
+        "quit" => Action::Quit,
+        "save" => Action::Save,
+        "load" => Action::Load,
+        "delete" => Action::Delete,
+        "new_note" => Action::NewNote,
+        "new_title" => Action::NewTitle,
+        "open_note_list" => Action::OpenNoteList,
+        "toggle_searchbar" => Action::ToggleSearchbar(input),
+        "toggle_sidebar" => Action::ToggleSidebar,
+        "increase_sidebar" => Action::IncreaseSidebar,
+        "decrease_sidebar" => Action::DecreaseSidebar,
+        "switch_active_widget" => Action::SwitchActiveWidget,
+        "load_selected_note" => Action::LoadSelectedNote,
+        _ => Action::Null,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct KeyMap(HashMap<Input, Action>);
+
+impl<'de> Deserialize<'de> for KeyMap {
+  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct KeyMapVisitor;
+
+        impl<'de> Visitor<'de> for KeyMapVisitor {
+            type Value = KeyMap;
+            
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("Expecting an action and a input")
+            }
+
+            fn visit_map<M>(self, mut access: M) -> Result<KeyMap, M::Error> 
+            where 
+                M: MapAccess<'de>
+            {
+                let mut key_map = HashMap::new();
+
+                while let Some((action, input)) = access.next_entry::<String, String>()? {
+                    let mut key = Key::Null;
+                    let mut ctrl = false;
+                    let mut alt = false;
+                    let mut shift = false;
+                    info!("deserializer::input: {}", input);
+                    info!("deserializer::action: {}", action);
+                    if input.contains('-') {
+                        let mut parts = input.split('-');
+                        let modifier_part = parts.next().ok_or_else(|| serde::de::Error::custom("Modifier part missing"))?;
+                        let key_part = parts.next().ok_or_else(|| serde::de::Error::custom("Key part missing"))?;
+                        info!("deserializer::modifier_part: {:?}", modifier_part);
+                        info!("deserializer::key_part: {:?}", key_part);
+                        
+                        key = match key_part.chars().next() {
+                            Some(c) => Key::Char(c),
+                            None => return Err(serde::de::Error::custom("Invalid key")),
+                        };
+
+                        ctrl = modifier_part.contains("ctrl");
+                        alt = modifier_part.contains("alt");
+                        shift = modifier_part.contains("shift");
+                    } else {
+                        match input.len() > 1 {
+                            true => {
+                                key = match input.as_str() {
+                                    "esc" => Key::Esc,
+                                    "tab" => Key::Tab,
+                                    "enter" => Key::Enter,
+                                    _ => Key::Null,
+                                };
+                            },
+                            false => {
+                                key = match input.chars().next() {
+                                    Some(c) => Key::Char(c),
+                                    None => return Err(serde::de::Error::custom("Invalid key")),
+                                };
+                            },
+                        }
+                    }                     
+
+                    info!("deserializer::key: {:?}\n, ctrl: {}\n, alt: {}\n, shift: {}\n", key, ctrl, alt, shift);
+                    let i = Input { key, ctrl, alt, shift };
+                    let a = get_action(&action, i);
+                    key_map.insert(i, a);
+                }
+                Ok(KeyMap(key_map))
+            }
+        }
+        deserializer.deserialize_map(KeyMapVisitor)
+    }
+}
+
+
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct TempConfig {
     pub(crate) colors: Colors,
     pub(crate) theme: TempTheme,
+    pub(crate) keymap: KeyMap,
 }
 
-
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone)]
 pub(crate) struct Config {
     pub(crate) theme: Theme,
+    pub(crate) keymap: HashMap<Input, Action>,
 }
 
 impl Config {
     fn new(temp_config: TempConfig) -> Result<Self, ConfigError> {
+        let keymap = temp_config.keymap.0.clone();
         let theme = get_theme(temp_config)?;
 
         Ok(Self {
             theme,
+            keymap,
         })
     }
 
     fn default() -> Self {
         let theme = Theme::default();
-        
+        let keymap = HashMap::new();
+
         Config {
             theme,
+            keymap,
         }
     }
 }
@@ -388,6 +494,7 @@ pub(crate) fn try_load_config() -> Result<Config, ConfigError> {
     if metadata.is_ok() {
         let content = fs::read_to_string(config_path)?;
         let temp_cfg: TempConfig = toml::de::from_str(&content)?;
+        info!("temp_cfg: {:?}", temp_cfg);
         let cfg = Config::new(temp_cfg);
         info!("cfg: {:?}", cfg);
         cfg
