@@ -233,6 +233,7 @@ impl<'a> Editor<'a> {
 
     pub(crate) fn handle_input(&mut self, input: Input) {
         let num_buf_len = self.num_buf.len() as u32;
+        //info!("editor::handle_input\nmode: {:?}\ncommand state: {:?}\ninput: {:?}", self.mode, self.cmd_state, input);
         match self.mode {
             EditorMode::Insert => match input {
                 Input { key: Key::Esc, .. } => {
@@ -1001,58 +1002,124 @@ impl<'a> Editor<'a> {
     }
 
     fn execute_yank(&mut self, modifier: char) {
+        let (start_row, start_col) = self.body.cursor();
+
         match modifier {
+            'h' => {
+                self.body.start_selection();
+                let actions = move |editor: &mut Editor<'a>| {
+                    editor.body.move_cursor(CursorMove::Back);
+                };
+                let num_buf_len = self.num_buf.len() as u32;
+                match num_buf_len {
+                    0 => {
+                        actions(self);
+                    }
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
+                }
+
+                self.body.copy();
+                self.body.cancel_selection();
+                self.cmd_buf.clear();
+            },
+            'j' => {
+                self.body.start_selection();
+                let actions = move |editor: &mut Editor<'a>| {
+                    editor.body.move_cursor(CursorMove::Down);
+                };
+                let num_buf_len = self.num_buf.len() as u32;
+                match num_buf_len {
+                    0 => {
+                        actions(self);
+                    }
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
+                }
+                self.body.copy();
+                self.body.cancel_selection();
+                self.cmd_buf.clear();
+            },
+            'k' => {
+                self.body.start_selection();
+                let actions = move |editor: &mut Editor<'a>| {
+                    editor.body.move_cursor(CursorMove::Up);
+                };
+                let num_buf_len = self.num_buf.len() as u32;
+                match num_buf_len {
+                    0 => {
+                        actions(self);
+                    }
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
+                }
+                self.body.copy();
+                self.body.cancel_selection();
+                self.cmd_buf.clear();
+            },
             'l' => {
+                self.body.start_selection();
+                let actions = move |editor: &mut Editor<'a>| {
+                    editor.body.move_cursor(CursorMove::Forward);
+                };
                 let num_buf_len = self.num_buf.len() as u32;
-                if num_buf_len != 0 {
-                    let num = self.get_num_from_buf(num_buf_len);
-                    for _ in 0..num {
-                        self.body.move_cursor(CursorMove::Head);
-                        self.body.delete_line_by_end();
-                        self.body.delete_newline();
-                        self.body.move_cursor(CursorMove::Down);
+                match num_buf_len {
+                    0 => {
+                        actions(self);
                     }
-                    self.num_buf.clear();
-                } else {
-                    self.body.move_cursor(CursorMove::Head);
-                    self.body.delete_line_by_end();
-                    self.body.delete_newline();
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
                 }
+                self.body.copy();
+                self.body.cancel_selection();
                 self.cmd_buf.clear();
-            }
+            },
             'w' => {
+                self.body.start_selection();
+                let actions = move |editor: &mut Editor<'a>| {
+                    editor.body.move_cursor(CursorMove::WordForward);
+                };
                 let num_buf_len = self.num_buf.len() as u32;
-                if num_buf_len != 0 {
-                    let num = self.get_num_from_buf(num_buf_len);
-                    for _ in 0..num {
-                        self.body.delete_word();
+                match num_buf_len {
+                    0 => {
+                        actions(self);
                     }
-                    self.num_buf.clear();
-                } else {
-                    self.body.delete_word();
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
                 }
+                self.body.copy();
+                self.body.cancel_selection();
                 self.cmd_buf.clear();
-            }
+            },
             'b' => {
+                self.body.start_selection();
+                let actions = move |editor: &mut Editor<'a>| {
+                    editor.body.move_cursor(CursorMove::WordBack);
+                };
                 let num_buf_len = self.num_buf.len() as u32;
-                if num_buf_len != 0 {
-                    let num = self.get_num_from_buf(num_buf_len);
-                    for _ in 0..num {
-                        self.body.move_cursor(CursorMove::WordBack);
-                        self.body.delete_word();
+                match num_buf_len {
+                    0 => {
+                        actions(self);
                     }
-                    self.num_buf.clear();
-                } else {
-                    self.body.move_cursor(CursorMove::WordBack);
-                    self.body.delete_word();
+                    _ => self.repeat_action(num_buf_len, move |editor| {
+                        actions(editor);
+                    }),
                 }
+                self.body.copy();
+                self.body.cancel_selection();
                 self.cmd_buf.clear();
-            }
+            },
             _ => {
                 self.cmd_buf.clear();
                 self.num_buf.clear();
             }
         }
+        self.body.move_cursor(CursorMove::Jump(start_row as u16, start_col as u16));
         self.cmd_state = CommandState::NoCommand;
     }
 
