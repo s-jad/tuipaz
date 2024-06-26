@@ -12,9 +12,9 @@ pub(crate) fn get_action(action: &str, input: Input) -> Action {
         "show_exit_screen" => Action::ShowExitScreen,
         "prev_screen" => Action::PrevScreen,
         "quit" => Action::Quit,
-        "save" => Action::Save,
-        "load" => Action::Load,
-        "delete" => Action::Delete,
+        "save" => Action::SaveNote,
+        "load" => Action::LoadNote,
+        "delete" => Action::DeleteNote,
         "new_note" => Action::NewNote,
         "new_title" => Action::NewTitle,
         "open_note_list" => Action::OpenNoteList,
@@ -68,7 +68,7 @@ impl KeyMap {
                 },
             ),
             (
-                Action::Save,
+                Action::SaveNote,
                 Input {
                     key: Key::Char('s'),
                     ctrl: false,
@@ -77,7 +77,7 @@ impl KeyMap {
                 },
             ),
             (
-                Action::Load,
+                Action::LoadNote,
                 Input {
                     key: Key::Char('l'),
                     ctrl: false,
@@ -86,7 +86,7 @@ impl KeyMap {
                 },
             ),
             (
-                Action::Delete,
+                Action::DeleteNote,
                 Input {
                     key: Key::Char('d'),
                     ctrl: false,
@@ -154,24 +154,6 @@ impl KeyMap {
                     key: Key::Tab,
                     ctrl: false,
                     alt: true,
-                    shift: false,
-                },
-            ),
-            (
-                Action::Next,
-                Input {
-                    key: Key::Down,
-                    ctrl: false,
-                    alt: false,
-                    shift: false,
-                },
-            ),
-            (
-                Action::Prev,
-                Input {
-                    key: Key::Up,
-                    ctrl: false,
-                    alt: false,
                     shift: false,
                 },
             ),
