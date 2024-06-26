@@ -10,7 +10,7 @@ use super::events::Action;
 pub(crate) fn get_action(action: &str, input: Input) -> Action {
     match action {
         "show_exit_screen" => Action::ShowExitScreen,
-        "prev_screen" => Action::PrevScreen,
+        "prev_screen" => Action::Esc,
         "quit" => Action::Quit,
         "save" => Action::SaveNote,
         "load" => Action::LoadNote,
@@ -59,7 +59,7 @@ impl KeyMap {
                 },
             ),
             (
-                Action::PrevScreen,
+                Action::Esc,
                 Input {
                     key: Key::Esc,
                     ctrl: false,
@@ -140,7 +140,7 @@ impl KeyMap {
                 },
             ),
             (
-                Action::SwitchBtns,
+                Action::Tab,
                 Input {
                     key: Key::Tab,
                     ctrl: false,
