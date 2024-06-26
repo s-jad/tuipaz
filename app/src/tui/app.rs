@@ -5,12 +5,12 @@ use log::info;
 use sqlx::{Pool, Sqlite};
 
 use crate::db::db_mac::NoteIdentifier;
-use tuipaz_textarea::Link as TextAreaLink;
+use tuipaz_textarea::{Link as TextAreaLink, Input};
 
 use super::{
     buttons::{Button, ButtonAction},
     editor::{Editor, EditorTheme},
-    events::Events,
+    events::{Events, Action},
     inputs::{InputAction, UserInput},
     note_list::{NoteList, NoteListAction, NoteListMode, NoteListTheme, SelectionStyle},
     ui::ui,
@@ -69,7 +69,7 @@ pub(crate) enum SearchbarState {
 #[derive(Debug)]
 pub(crate) struct App<'a> {
     pub(crate) state: AppState,
-    pub(crate) config: Config,
+    pub(crate) keymap: HashMap<Action, Input>,
     pub(crate) db: Pool<Sqlite>,
     pub(crate) current_screen: Screen,
     pub(crate) prev_screen: Screen,
@@ -135,7 +135,7 @@ impl<'a> App<'a> {
 
         Self {
             state: AppState::default(),
-            config,
+            keymap: config.keymap,
             db,
             current_screen: Screen::Welcome,
             prev_screen: Screen::Welcome,
