@@ -28,12 +28,12 @@ const DELETE_KEYS: [Key; 10] = [
     Key::Backspace,
 ];
 
-#[derive(Debug, Clone, Hash)]
+#[derive(Debug, Clone, Copy, Hash)]
 #[allow(clippy::derived_hash_with_manual_eq)]
 pub(crate) enum Action {
     ShowExitScreen,
-    PrevScreen,
-    SwitchBtns,
+    Esc,
+    Tab,
     Quit,
     SaveNote,
     LoadNote,
@@ -62,8 +62,8 @@ pub(crate) enum Action {
         match (self, other) {
             // Compare variants without associated data
             (Action::ShowExitScreen, Action::ShowExitScreen) => true,
-            (Action::PrevScreen, Action::PrevScreen) => true,
-            (Action::SwitchBtns, Action::SwitchBtns) => true,
+            (Action::Esc, Action::Esc) => true,
+            (Action::Tab, Action::Tab) => true,
             (Action::Quit, Action::Quit) => true,
             (Action::SaveNote, Action::SaveNote) => true,
             (Action::LoadNote, Action::LoadNote) => true,
@@ -100,7 +100,7 @@ impl Events {
     pub(crate) async fn handle_events(app: &mut App<'_>) -> Result<()> {
         match event::read()? {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                let action = Self::handle_key_event(app, key_event.into());
+                let action = Self::handle_key_event(key_event.into());
                 let result = Self::execute_action(app, action).await;
                 result.wrap_err_with(|| format!("handling key event failed:\n{key_event:#?}"))
             }
@@ -108,74 +108,33 @@ impl Events {
         }
     }
 
-    fn handle_key_event(app: &mut App<'_>, input: Input) -> Action {
-        match app.current_screen {
-            Screen::Welcome => match input {
-                Input { key: Key::Char('q'), alt: true, ..  } => Action::ShowExitScreen,
-                Input { key: Key::Tab, .. } => Action::SwitchBtns,
-                Input { key: Key::Enter, .. } => Action::Activate(input),
-                _ => Action::Null,
-            },
-            Screen::Main => match input {
-                Input { key: Key::Char('q'), alt: true, .. } => Action::ShowExitScreen,
-                Input { key: Key::Char('s'), alt: true, .. } => Action::SaveNote,
-                Input { key: Key::Char('l'), alt: true, .. } => Action::LoadNote,
-                Input { key: Key::Char('n'), alt: true, .. } => Action::NewNote,
-                Input { key: Key::Char('t'), alt: true, .. } => Action::NewTitle,
-                Input { key: Key::Char('d'), alt: true, .. } => Action::DeleteNote,
-                Input { key: Key::Char('/'), .. } => Action::ToggleSearchbar(input),
-                Input { key: Key::Char('f'), alt: true, .. } => Action::ToggleSidebar,
-                Input { key: Key::Char(','), alt: true, .. } => Action::IncreaseSidebar,
-                Input { key: Key::Char('.'), alt: true, .. } => Action::DecreaseSidebar,  
-                Input { key: Key::Char(']'), .. } => Action::InsertLink(input),
-                Input { key: Key::Tab, alt: true, .. } => Action::SwitchActiveWidget,
-                Input { key: Key::Enter, .. }  =>  Action::Activate(input),
-                Input { key: Key::Up, .. } => Action::Up(input),
-                Input { key: Key::Down, .. } => Action::Down(input),
-                input => Action::Edit(input),
-            },
-            Screen::NewNote => match input {
-                Input { key: Key::Char('q'), alt: true, .. } =>  Action::ShowExitScreen,
-                Input { key: Key::Esc, .. } => Action::PrevScreen,
-                Input { key: Key::Enter, .. } =>  Action::Activate(input),
-                Input { key: Key::Backspace, .. } => Action::DeleteChar,
-                input =>  Action::Edit(input),
-            },
-            Screen::NewLinkedNote => match input {
-                Input { key: Key::Char('q'), alt: true, .. } =>  Action::ShowExitScreen,
-                Input { key: Key::Esc, .. } => Action::PrevScreen,
-                Input { key: Key::Enter, .. } =>  Action::Activate(input),
-                Input { key: Key::Down, .. } => Action::Down(input),
-                Input { key: Key::Up, .. } => Action::Up(input),
-                Input { key: Key::Tab, .. } => Action::SwitchActiveWidget,
-                Input { key: Key::Backspace, .. } => Action::DeleteChar,
-                input => Action::Edit(input),
-            },
-            Screen::LoadNote => match input {
-                Input { key: Key::Char('q'), alt: true, ..  } =>  Action::ShowExitScreen,
-                Input { key: Key::Esc, .. } => Action::PrevScreen,
-                Input { key: Key::Down, .. }
-                | Input { key: Key::Char('j'), .. } => Action::Down(input),
-                Input { key: Key::Up, .. }
-                | Input { key: Key::Char('k'), .. } => Action::Up(input),
-                Input { key: Key::Enter, .. } => Action::Activate(input),
-                _ => Action::Null,
-            },
-            Screen::Popup => Action::PrevScreen,
-            Screen::DeleteNoteConfirmation => match input {
-                Input { key: Key::Esc, .. } => Action::ShowExitScreen,
-                Input { key: Key::Char('y'), .. } => Action::Confirm,
-                Input { key: Key::Char('n'), .. } => Action::Cancel,
-                _ => Action::Null,
-            }
-            Screen::Exiting => match input {
-                Input { key: Key::Char('y'), .. } => Action::Confirm,
-                Input { key: Key::Char('n'), .. } => Action::Cancel,
-                _ => Action::Null,
-            },
+    fn handle_key_event(input: Input) -> Action {
+        match input {
+            Input { key: Key::Char('q'), alt: true, ..  } => Action::ShowExitScreen,
+            Input { key: Key::Esc, .. } => Action::Esc,
+            Input { key: Key::Tab, alt: false, .. } => Action::Tab,
+            Input { key: Key::Enter, .. } => Action::Activate(input),
+            Input { key: Key::Char('s'), alt: true, .. } => Action::SaveNote,
+            Input { key: Key::Char('l'), alt: true, .. } => Action::LoadNote,
+            Input { key: Key::Char('n'), alt: true, .. } => Action::NewNote,
+            Input { key: Key::Char('t'), alt: true, .. } => Action::NewTitle,
+            Input { key: Key::Char('d'), alt: true, .. } => Action::DeleteNote,
+            Input { key: Key::Char('/'), .. } => Action::ToggleSearchbar(input),
+            Input { key: Key::Char('f'), alt: true, .. } => Action::ToggleSidebar,
+            Input { key: Key::Char(','), alt: true, .. } => Action::IncreaseSidebar,
+            Input { key: Key::Char('.'), alt: true, .. } => Action::DecreaseSidebar,  
+            Input { key: Key::Char(']'), .. } => Action::InsertLink(input),
+            Input { key: Key::Tab, alt: true, .. } => Action::SwitchActiveWidget,
+            Input { key: Key::Backspace, .. } => Action::DeleteChar,
+            Input { key: Key::Down, .. }
+            | Input { key: Key::Char('j'), .. } => Action::Down(input),
+            Input { key: Key::Up, .. }
+            | Input { key: Key::Char('k'), .. } => Action::Up(input),
+            Input { key: Key::Char('y'), .. } => Action::Confirm,
+            Input { key: Key::Char('n'), .. } => Action::Cancel,
+            input => Action::Edit(input),
         }
     }
-
 
     async fn execute_action(app: &mut App<'_>, action: Action) -> Result<()> {
         match (app.current_screen, action) {
@@ -183,7 +142,7 @@ impl Events {
                 app.prev_screen = app.current_screen;
                 Self::show_exit_screen(app);
             },
-            (Screen::Welcome, Action::SwitchBtns) => {
+            (Screen::Welcome, Action::Tab) => {
                 Self::switch_btns(app);
             },
             (Screen::Welcome, Action::Activate(_)) => {
@@ -216,6 +175,14 @@ impl Events {
             (Screen::Main, Action::NewTitle) => {
                 app.prev_screen = app.current_screen;
                 app.switch_to_new_note(InputAction::NoteTitle);
+            }
+            (Screen::Main, Action::DeleteChar) => {
+                let input = Input { key: Key::Backspace, ..Default::default() };
+                match app.active_widget {
+                    Some(ActiveWidget::Editor) => app.editor.handle_input(input),
+                    Some(ActiveWidget::Searchbar) => { app.searchbar.input.delete_char(); },
+                    Some(_) | None => {},
+                }
             }
             (Screen::Main, Action::DeleteNote) => {
                 app.prev_screen = app.current_screen;
@@ -322,6 +289,14 @@ impl Events {
                 Some(ActiveWidget::Sidebar) => app.note_list.next(),
                 Some(_) | None => {},
             }
+            (Screen::Main, Action::Confirm)
+            | (Screen::Main, Action::Cancel)
+            | (Screen::Main, Action::Esc)
+            | (Screen::Main, Action::Tab) => {
+                let input = app.keymap.get(&action)
+                    .expect("keymap should contain bindings for all actions");
+                app.editor.handle_input(*input);
+            }
             (Screen::Main, Action::Edit(input)) => match app.active_widget {
                 Some(ActiveWidget::Editor) => {
                     app.editor.handle_input(input);
@@ -352,7 +327,7 @@ impl Events {
                 app.prev_screen = app.current_screen;
                 Self::show_exit_screen(app);
             },
-            (Screen::NewNote, Action::PrevScreen) => {
+            (Screen::NewNote, Action::Esc) => {
                 app.current_screen = app.prev_screen;
                 app.active_widget = Some(ActiveWidget::Editor);
             },
@@ -374,7 +349,7 @@ impl Events {
                 app.prev_screen = app.current_screen;
                 Self::show_exit_screen(app);
             }
-            (Screen::NewLinkedNote, Action::PrevScreen) => {
+            (Screen::NewLinkedNote, Action::Esc) => {
                 app.current_screen = app.prev_screen;
                 app.note_list.set_mode(NoteListMode::Sidebar);
                 app.note_list.set_action(NoteListAction::LoadNote);
@@ -425,7 +400,7 @@ impl Events {
                 app.prev_screen = app.current_screen;
                 Self::show_exit_screen(app);
             }
-            (Screen::LoadNote, Action::PrevScreen) => {
+            (Screen::LoadNote, Action::Esc) => {
                 app.switch_to_main();
             }
             (Screen::LoadNote, Action::Down(_)) => {
@@ -446,7 +421,7 @@ impl Events {
                     app.current_screen = app.prev_screen;
                 }
             },
-            (Screen::DeleteNoteConfirmation, Action::PrevScreen) => {
+            (Screen::DeleteNoteConfirmation, Action::Esc) => {
                 app.current_screen = app.prev_screen;
             }
             (Screen::DeleteNoteConfirmation, Action::Confirm) => {
