@@ -951,8 +951,8 @@ impl Events {
                     ed_link.updated = true;
                 }
             } else {
-                let prev_copy_id = app.editor.body.copied_link_ids.get(&ta_link.id).expect("link already exists");
-                let linked_note_id = app.editor.links.get(&(*prev_copy_id as i64)).expect("prev copy should exist");
+                let prev_copy_id = app.editor.body.copied_link_ids.remove(&ta_link.id).expect("link already exists");
+                let linked_note_id = app.editor.links.get(&(prev_copy_id as i64)).expect("prev copy should exist");
 
                 let copied_link = Link {
                     id: app.editor.note_id.expect("Note should have an id"),
