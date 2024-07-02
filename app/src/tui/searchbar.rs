@@ -1,6 +1,6 @@
 use log::info;
 use ratatui::{widgets::{Borders, Block, Padding, Widget}, symbols, style::{Modifier, Style, Color}, text::{Span, Line}};
-use tuipaz_textarea::TextInput;
+use tuipaz_textarea::{TextInput, Input, Key};
 
 use super::app::ComponentState;
 
@@ -42,6 +42,19 @@ impl<'a> Searchbar<'a> {
 
     pub(crate) fn get_search_text(&self) -> &str {
         self.input.get_text()
+    }
+
+    pub(crate) fn handle_input(&mut self, input: Input) {
+        match input {
+            Input { key: Key::Esc, .. } => {
+                self.clear_search();
+                self.set_state(ComponentState::Inactive);
+                
+            }
+            _ => {
+                self.input.input(input);
+            }
+        }
     }
 }
 
