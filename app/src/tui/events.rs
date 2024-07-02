@@ -295,8 +295,21 @@ impl Events {
             | (Screen::Main, Action::Tab) => {
                 let input = app.keymap.get(&action)
                     .expect("keymap should contain bindings for all actions");
-                app.editor.handle_input(*input);
-            }
+
+                match app.active_widget {
+                    Some(ActiveWidget::Editor) => {
+                        app.editor.handle_input(*input);
+                    },
+                    Some(ActiveWidget::Searchbar) => {
+                        app.searchbar.handle_input(*input);
+                        if app.searchbar.state == ComponentState::Inactive {
+                            app.editor.searchbar_open = false;
+                            app.searchbar_state = SearchbarState::Hidden;
+                        }
+                    },
+                    _ => {},
+                }
+            } 
             (Screen::Main, Action::Edit(input)) => match app.active_widget {
                 Some(ActiveWidget::Editor) => {
                     app.editor.handle_input(input);
@@ -307,6 +320,8 @@ impl Events {
 
                     if input.key == Key::Char('u') || input.key == Key::Char('r') {
                         Self::check_link_edits(app);
+                    } else if input.key == Key::Char('p') {
+                        Self::check_link_paste(app);
                     }
 
                     if !app.editor.links.is_empty() {
@@ -342,6 +357,13 @@ impl Events {
                     app.user_input.set_state(ComponentState::Active);
                 }
             },
+            (Screen::NewNote, Action::Confirm)
+            | (Screen::NewNote, Action::Cancel)
+            | (Screen::NewNote, Action::Tab) => {
+                let input = app.keymap.get(&action)
+                    .expect("keymap should contain bindings for all actions");
+                app.user_input.text.input(*input);
+            }
            (Screen::NewNote, Action::Edit(input)) => {
                 app.user_input.text.input(input);
             },
@@ -916,6 +938,36 @@ impl Events {
             let ta_link = app.editor.body.links.get(&(link.text_id as usize))
                 .expect("editor links and textarea links should be synced");
             link.deleted = ta_link.deleted;
+        }
+    }
+
+    fn check_link_paste(app: &mut App<'_>) {
+        for ta_link in app.editor.body.links.values_mut() {
+            if let Some(ed_link) = app.editor.links.get_mut(&(ta_link.id as i64)) {
+                if ed_link.moved(ta_link) {
+                    ed_link.row = ta_link.row;
+                    ed_link.start_col = ta_link.start_col;
+                    ed_link.end_col = ta_link.end_col;
+                    ed_link.updated = true;
+                }
+            } else {
+                let prev_copy_id = app.editor.body.copied_link_ids.get(&ta_link.id).expect("link already exists");
+                let linked_note_id = app.editor.links.get(&(*prev_copy_id as i64)).expect("prev copy should exist");
+
+                let copied_link = Link {
+                    id: app.editor.note_id.expect("Note should have an id"),
+                    text_id: ta_link.id as i64,
+                    linked_id: linked_note_id.linked_id,
+                    row: ta_link.row,
+                    start_col: ta_link.start_col,
+                    end_col: ta_link.end_col,
+                    saved: false,
+                    updated: false,
+                    deleted: false,
+                };
+
+                app.editor.links.insert(copied_link.text_id, copied_link);
+            }
         }
     }
 
