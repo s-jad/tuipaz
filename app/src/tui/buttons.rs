@@ -4,7 +4,7 @@ use ratatui::{
     widgets::{Block, BorderType, Borders, Padding, Paragraph, Widget, Wrap},
 };
 
-use super::app::ComponentState;
+use super::{app::ComponentState, user_messages::centered_rect};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum ButtonAction {
@@ -58,7 +58,7 @@ impl Widget for Button {
             .borders(Borders::ALL)
             .border_type(BorderType::Rounded)
             .border_style(border_style)
-            .padding(Padding::new(2, 2, 2, 2));
+            .padding(Padding::new(2, 2, 2, 1));
 
         let p = Paragraph::new(self.text)
             .centered()
@@ -66,6 +66,6 @@ impl Widget for Button {
             .block(btn_block)
             .wrap(Wrap { trim: true });
 
-        p.render(area, buf);
+        p.render(centered_rect(80, 100, area), buf);
     }
 }
