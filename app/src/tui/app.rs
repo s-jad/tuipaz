@@ -98,7 +98,7 @@ impl<'a> App<'a> {
         let max_col = term_size - 4;
 
         let editor_theme = EditorTheme {
-            title: config.theme.title,
+            title: config.theme.note_title,
             text: config.theme.text,
             borders: config.theme.borders,
             normal_mode: config.theme.modes.normal_mode,
@@ -107,6 +107,10 @@ impl<'a> App<'a> {
             select: config.theme.highlights.select,
             search: config.theme.highlights.search,
             links: config.theme.highlights.links,
+            main_heading: config.theme.headings.main_color,
+            main_heading_modifiers: config.theme.headings.main_modifiers,
+            sub_heading: config.theme.headings.sub_color,
+            sub_heading_modifiers: config.theme.headings.sub_modifiers,
         };
 
         let search_theme = SearchbarTheme {
@@ -117,7 +121,7 @@ impl<'a> App<'a> {
 
         let note_list_theme = NoteListTheme {
             text: config.theme.text,
-            title: config.theme.title,
+            title: config.theme.note_title,
             selection_style: SelectionStyle {
                 highlight: config.theme.notelist.selection_highlight,
                 pointer: config.theme.notelist.selection_symbol.to_owned(),
@@ -198,7 +202,6 @@ impl<'a> App<'a> {
                 self.editor.set_state(ComponentState::Active);
                 self.note_list.set_state(ComponentState::Inactive);
             }
-
         }
         self.active_widget = Some(active);
     }
@@ -231,6 +234,10 @@ impl<'a> App<'a> {
         self.current_screen = Screen::NewNote;
         self.user_input.set_action(action);
         self.set_active_widget(ActiveWidget::NoteTitleInput);
+    }
+
+    pub(crate) fn switch_to_prev_screen(&mut self) {
+        self.current_screen = self.prev_screen;
     }
 
     pub(crate) fn get_max_col(&self) -> u16 {
