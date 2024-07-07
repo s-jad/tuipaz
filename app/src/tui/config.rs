@@ -41,12 +41,6 @@ fn complete_keymap(keymap: &mut HashMap<Action, Input>) {
 pub(crate) struct KeyMap(HashMap<Action, Input>);
 
 impl KeyMap {
-    fn default() -> Self {
-        let defaults = Self::get_defaults();
-
-        KeyMap(defaults.into_iter().collect::<HashMap<Action, Input>>())
-    }
-
     fn get_defaults() -> Vec<(Action, Input)> {
         vec![
             (
@@ -360,6 +354,102 @@ impl<'de> Deserialize<'de> for Colors {
     }
 }
 
+
+#[derive(Debug, Clone)]
+pub(crate) struct HeadingsTheme {
+    pub (crate) main_color: Color,
+    pub (crate) main_modifiers: Vec<Modifier>,
+    pub (crate) sub_color: Color,
+    pub (crate) sub_modifiers: Vec<Modifier>,
+}
+
+impl HeadingsTheme {
+    fn default() -> Self {
+        Self {
+            main_color: Color::Green,
+            main_modifiers: vec![Modifier::BOLD, Modifier::UNDERLINED],
+            sub_color: Color::Magenta,
+            sub_modifiers: vec![Modifier::ITALIC],
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for HeadingsTheme {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de> 
+    {
+        struct HTVisitor;
+
+        impl<'de> Visitor<'de> for HTVisitor {
+            type Value = HeadingsTheme;
+            
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("Expecting a key and headings theme value")
+            }
+
+            fn visit_map<M>(self, mut access: M) -> Result<HeadingsTheme, M::Error> 
+            where 
+                M: MapAccess<'de>
+            {
+                let mut ht = HeadingsTheme::default();
+                let mut main_modifiers = vec![];
+                let mut sub_modifiers = vec![];
+
+                while let Some((key, value)) = access.next_entry::<String, String>()? {
+                    match key.as_str() {
+                        "main_color" => {
+                            let mc = 
+                                try_convert_color(Some(value), Color::Green).unwrap_or(Color::Green);
+                            ht.main_color = mc;
+                        } 
+                        "sub_color" => {
+                           let sc =  
+                                try_convert_color(Some(value), Color::Magenta).unwrap_or(Color::Magenta);
+                            ht.sub_color = sc;
+                        } 
+                        "main_bold" => {
+                            if value == "true" {
+                                main_modifiers.push(Modifier::BOLD);
+                            }
+                        } 
+                        "main_italic" => {
+                            if value == "true" {
+                                main_modifiers.push(Modifier::ITALIC);
+                            }
+                        } 
+                        "main_underlined" => {
+                            if value == "true" {
+                                main_modifiers.push(Modifier::UNDERLINED);
+                            }
+                        } 
+                        "sub_bold" => {
+                            if value == "true" {
+                                sub_modifiers.push(Modifier::BOLD);
+                            }
+                        }
+                        "sub_italic" => {
+                            if value == "true" {
+                                sub_modifiers.push(Modifier::ITALIC);
+                            }
+                        }
+                        "sub_underlined" => {
+                            if value == "true" {
+                                sub_modifiers.push(Modifier::UNDERLINED);
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+                ht.main_modifiers = main_modifiers;
+                ht.sub_modifiers = sub_modifiers;
+                Ok(ht)
+            }
+        }
+        deserializer.deserialize_map(HTVisitor)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct NoteListTheme {
     pub(crate) selection_modifier: Modifier,
@@ -434,55 +524,70 @@ impl<'de> Deserialize<'de> for NoteListTheme {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub(crate) struct TempTheme {
-    pub(crate) title: String,
-    pub(crate) text: String,
-    pub(crate) borders: String,
+pub(crate) struct ModeTheme {
     pub(crate) normal_mode: String,
     pub(crate) insert_mode: String,
     pub(crate) visual_mode: String,
     pub(crate) search_mode: String,
-    pub(crate) links: String,
-    pub(crate) select: String,
-    pub(crate) search: String,
-    pub(crate) hop: String,
-    pub(crate) notelist: NoteListTheme,
 }
 
 
 #[derive(Debug, Clone, Deserialize)]
+pub(crate) struct HighlightTheme {
+    pub(crate) links: String,
+    pub(crate) select: String,
+    pub(crate) search: String,
+    pub(crate) hop: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct TempTheme {
+    pub(crate) note_title: String,
+    pub(crate) text: String,
+    pub(crate) borders: String,
+    pub(crate) modes: ModeTheme,
+    pub(crate) highlights: HighlightTheme,
+    pub(crate) notelist: NoteListTheme,
+    pub(crate) headings: HeadingsTheme,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub(crate) struct Theme {
-    pub(crate) title: Color,
+    pub(crate) note_title: Color,
     pub(crate) text: Color,
+    pub(crate) borders: Color,
     pub(crate) modes: ModeColors,
     pub(crate) highlights: HighlightColors,
-    pub(crate) borders: Color,
     pub(crate) notelist: NoteListTheme,
+    pub(crate) headings: HeadingsTheme,
 }
 
 impl Theme {
     fn new(
-        title: Color,
+        note_title: Color,
         text: Color,
+        borders: Color,
         modes: ModeColors,
         highlights: HighlightColors,
-        borders: Color,
         notelist: NoteListTheme,
+        headings: HeadingsTheme,
     ) -> Self {
         Self {
-            title,
+            note_title,
             text,
+            borders,
             modes,
             highlights,
-            borders,
-            notelist
+            notelist,
+            headings
         }
     }
 
     fn default() -> Self {
         Self {
-            title: Color::Red,
+            note_title: Color::Red,
             text: Color::default(),
+            borders: Color::default(),
             modes: ModeColors {
                 normal_mode: Color::Yellow,
                 insert_mode: Color::Cyan,
@@ -495,11 +600,16 @@ impl Theme {
                 search: Color::Red,
                 hop: Color::LightRed,
             },
-            borders: Color::default(),
             notelist: NoteListTheme {
                 selection_modifier: Modifier::BOLD,
                 selection_symbol: ">> ".to_string(),
                 selection_highlight: Color::Magenta,
+            },
+            headings: HeadingsTheme {
+                main_color: Color::Green,
+                main_modifiers: vec![Modifier::BOLD, Modifier::UNDERLINED],
+                sub_color: Color::Magenta,
+                sub_modifiers: vec![Modifier::ITALIC],
             }
         }
     }
@@ -548,7 +658,8 @@ impl Config {
 
     fn default() -> Self {
         let theme = Theme::default();
-        let keymap = HashMap::new();
+        let mut keymap = HashMap::new();
+        complete_keymap(&mut keymap);
 
         Config {
             theme,
@@ -638,48 +749,47 @@ fn try_convert_color(user_color: Option<String>, default: Color) -> Result<Color
     }
 }
 
-
 fn get_theme(temp_config: TempConfig) -> Result<Theme, ConfigError> {
     let default_theme = Theme::default();
 
     let title = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.title).cloned(),
-        default_theme.title
+        temp_config.colors.0.get(&temp_config.theme.note_title).cloned(),
+        default_theme.note_title
     )?;
     let text = try_convert_color(
         temp_config.colors.0.get(&temp_config.theme.text).cloned(),
         default_theme.text
     )?;
     let normal_mode = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.normal_mode).cloned(), 
+        temp_config.colors.0.get(&temp_config.theme.modes.normal_mode).cloned(), 
         default_theme.modes.normal_mode
     )?;
     let insert_mode  = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.insert_mode).cloned(),
+        temp_config.colors.0.get(&temp_config.theme.modes.insert_mode).cloned(),
         default_theme.modes.insert_mode
     )?;
     let visual_mode  = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.visual_mode).cloned(),
+        temp_config.colors.0.get(&temp_config.theme.modes.visual_mode).cloned(),
         default_theme.modes.visual_mode
     )?;
     let search_mode = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.search_mode).cloned(),
+        temp_config.colors.0.get(&temp_config.theme.modes.search_mode).cloned(),
         default_theme.modes.search_mode
     )?;
     let links = try_convert_color
-        (temp_config.colors.0.get(&temp_config.theme.links).cloned(),
+        (temp_config.colors.0.get(&temp_config.theme.highlights.links).cloned(),
         default_theme.highlights.links
     )?;
     let select = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.select).cloned(),
+        temp_config.colors.0.get(&temp_config.theme.highlights.select).cloned(),
         default_theme.highlights.select
     )?;
     let search = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.search).cloned(),
+        temp_config.colors.0.get(&temp_config.theme.highlights.search).cloned(),
         default_theme.highlights.search
     )?;
     let hop = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.hop).cloned(),
+        temp_config.colors.0.get(&temp_config.theme.highlights.hop).cloned(),
         default_theme.highlights.hop
     )?;
     let borders = try_convert_color(
@@ -703,10 +813,11 @@ fn get_theme(temp_config: TempConfig) -> Result<Theme, ConfigError> {
     Ok(Theme::new(
         title,
         text, 
+        borders,
         modes,
         highlights,
-        borders,
         temp_config.theme.notelist,
+        temp_config.theme.headings,
     ))
 }
 
