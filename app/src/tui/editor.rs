@@ -17,7 +17,6 @@ const DELETE_COMMANDS: [char; 7] = ['d', 'w', 'b', 'j', 'k', 'l', 'h'];
 const YANK_COMMANDS: [char; 6] = ['w', 'b', 'j', 'k', 'l', 'h'];
 const GOTO_COMMAND: char = 'g';
 
-
 #[derive(Debug, Clone)]
 pub(crate) struct EditorTheme {
     pub(crate) title: Color,
@@ -29,6 +28,10 @@ pub(crate) struct EditorTheme {
     pub(crate) select: Color,
     pub(crate) search: Color,
     pub(crate) links: Color,
+    pub(crate) main_heading: Color,
+    pub(crate) main_heading_modifiers: Vec<Modifier>,
+    pub(crate) sub_heading: Color,
+    pub(crate) sub_heading_modifiers: Vec<Modifier>,
 }
 
 #[derive(Debug, Clone)]
@@ -145,6 +148,10 @@ impl<'a> Editor<'a> {
             text: theme.text,
             select: theme.select,
             links: theme.links,
+            main_heading: theme.main_heading,
+            main_heading_modifiers: theme.main_heading_modifiers.clone(),
+            sub_heading: theme.sub_heading,
+            sub_heading_modifiers: theme.sub_heading_modifiers.clone(),
         };
 
         let mut body = TextArea::new(body, ta_links, max_col, ta_theme);
@@ -190,11 +197,15 @@ impl<'a> Editor<'a> {
             text: self.theme.text,
             select: self.theme.select,
             links: self.theme.links,
+            main_heading: self.theme.main_heading,
+            main_heading_modifiers: self.theme.main_heading_modifiers.clone(),
+            sub_heading: self.theme.sub_heading,
+            sub_heading_modifiers: self.theme.sub_heading_modifiers.clone(),
         };
 
         let mut body = TextArea::new(body, ta_links, max_col, ta_theme);
         body.set_cursor_line_style(Style::default());
-        body.set_selection_style(Style::default().bg(Color::Red));
+        body.set_selection_style(Style::default().bg(self.theme.select));
         body.set_max_histories(100);
 
         self.title = title;
@@ -1325,17 +1336,25 @@ mod tests {
     use super::*;
 
     const THEME_COLOR: Color = Color::Red; 
-    const THEME: EditorTheme = EditorTheme {
-        title: THEME_COLOR,
-        text: THEME_COLOR,
-        borders: THEME_COLOR,
-        normal_mode: THEME_COLOR,
-        insert_mode: THEME_COLOR,
-        visual_mode: THEME_COLOR,
-        select: THEME_COLOR,
-        search: THEME_COLOR,
-        links: THEME_COLOR,
-    };
+    
+    fn theme() -> EditorTheme {
+        let modifiers = vec![Modifier::BOLD];
+        EditorTheme {
+            title: THEME_COLOR,
+            text: THEME_COLOR,
+            borders: THEME_COLOR,
+            normal_mode: THEME_COLOR,
+            insert_mode: THEME_COLOR,
+            visual_mode: THEME_COLOR,
+            select: THEME_COLOR,
+            search: THEME_COLOR,
+            links: THEME_COLOR,
+            main_heading: THEME_COLOR,
+            main_heading_modifiers: modifiers.clone(),
+            sub_heading: THEME_COLOR,
+            sub_heading_modifiers: modifiers,
+        }
+    }
 
     #[test]
     fn test_execute_delete_dd_no_links() {
@@ -1346,7 +1365,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1364,7 +1383,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(1, 0));
@@ -1381,7 +1400,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1399,7 +1418,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1417,7 +1436,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
 
         editor.set_mode(EditorMode::Normal);
@@ -1436,7 +1455,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![2];
@@ -1454,7 +1473,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1470,7 +1489,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::End);
@@ -1487,7 +1506,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
@@ -1505,7 +1524,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![3];
@@ -1523,7 +1542,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![1, 2];
@@ -1545,7 +1564,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(4,0));
@@ -1565,7 +1584,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![3];
@@ -1586,7 +1605,7 @@ mod tests {
             None,
             false,
             140,
-            THEME,
+            theme(),
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0,0));
