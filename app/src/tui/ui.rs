@@ -3,7 +3,7 @@ use log::info;
 use ratatui::{
     layout::{Alignment, Constraint, Direction, Layout},
     style::{Color, Style, Modifier},
-    text::{Span, Line},
+    text::{Span, Line, Text},
     widgets::{Block, BorderType, Borders, Clear, Padding, Paragraph, Widget, Wrap},
     Frame,
 };
@@ -32,9 +32,9 @@ fn render_welcome_screen(app: &mut App, frame: &mut Frame) {
 
     let two_btn_split = [
         Constraint::Min(4),
-        Constraint::Percentage(30),
-        Constraint::Min(2),
-        Constraint::Percentage(30),
+        Constraint::Percentage(25),
+        Constraint::Percentage(5),
+        Constraint::Percentage(25),
         Constraint::Min(4),
     ];
 
@@ -45,24 +45,35 @@ fn render_welcome_screen(app: &mut App, frame: &mut Frame) {
     let layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Percentage(10), // Top padding
             Constraint::Percentage(40), // Title section
             Constraint::Percentage(20), // buttons
-            Constraint::Percentage(40), // Bottom padding
+            Constraint::Percentage(30), // Bottom padding
         ])
         .split(area);
 
     let welcome_block = Block::default()
-        .title("Welcome to Tuipaz!")
         .borders(Borders::NONE)
+        .padding(Padding { left: 0, right: 0, top: 5, bottom: 0 })
         .style(Style::default())
         .title_alignment(Alignment::Center);
 
-    welcome_block.render(layout[0], buf);
+    let welcome = Paragraph::new(vec![
+        Line::styled("████████╗██╗   ██╗██╗██████╗  █████╗ ███████╗", Style::default()),
+        Line::styled("╚══██╔══╝██║   ██║██║██╔══██╗██╔══██╗╚══███╔╝", Style::default()),
+        Line::styled("   ██║   ██║   ██║██║██████╔╝███████║  ███╔╝ ", Style::default()),
+        Line::styled("   ██║   ██║   ██║██║██╔═══╝ ██╔══██║ ███╔╝  ", Style::default()),
+        Line::styled("   ██║   ╚██████╔╝██║██║     ██║  ██║███████╗", Style::default()),
+        Line::styled("   ╚═╝    ╚═════╝ ╚═╝╚═╝     ╚═╝  ╚═╝╚══════╝", Style::default()),
+    ]).block(welcome_block)
+    .alignment(Alignment::Center);
+
+    welcome.render(layout[1], buf);
 
     let btn_layout = Layout::default()
         .direction(Direction::Horizontal)
         .constraints(two_btn_split)
-        .split(layout[1]);
+        .split(layout[2]);
 
     let new_note_btn = app.btns[0].clone();
     new_note_btn.render(btn_layout[1], buf);
@@ -95,7 +106,7 @@ fn render_main_screen(app: &mut App, frame: &mut Frame) {
             Constraint::Percentage(searchbar_size),
         ])
         .split(h_layout[0]);
-
+    
     app.editor.clone().render(v_layout[0], buf);
     app.searchbar.clone().render(v_layout[1], buf);
     app.note_list.clone().render(h_layout[1], buf);
