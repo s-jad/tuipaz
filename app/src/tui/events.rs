@@ -343,7 +343,7 @@ impl Events {
                 Self::show_exit_screen(app);
             },
             (Screen::NewNote, Action::Esc) => {
-                app.current_screen = app.prev_screen;
+                app.switch_to_prev_screen();
                 app.active_widget = Some(ActiveWidget::Editor);
             },
             (Screen::NewNote, Action::Activate(_)) => match app.user_input.get_action() {
@@ -372,7 +372,7 @@ impl Events {
                 Self::show_exit_screen(app);
             }
             (Screen::NewLinkedNote, Action::Esc) => {
-                app.current_screen = app.prev_screen;
+                app.switch_to_prev_screen();
                 app.note_list.set_mode(NoteListMode::Sidebar);
                 app.note_list.set_action(NoteListAction::LoadNote);
                 app.active_widget = Some(ActiveWidget::Editor);
@@ -423,7 +423,7 @@ impl Events {
                 Self::show_exit_screen(app);
             }
             (Screen::LoadNote, Action::Esc) => {
-                app.switch_to_main();
+                app.switch_to_prev_screen();
             }
             (Screen::LoadNote, Action::Down(_)) => {
                 app.note_list.next();
@@ -444,7 +444,7 @@ impl Events {
                 }
             },
             (Screen::DeleteNoteConfirmation, Action::Esc) => {
-                app.current_screen = app.prev_screen;
+                app.switch_to_prev_screen();
             }
             (Screen::DeleteNoteConfirmation, Action::Confirm) => {
                 if let Some(note_id) = app.editor.note_id {
@@ -461,15 +461,15 @@ impl Events {
                 }
             }
             (Screen::DeleteNoteConfirmation, Action::Cancel) => {
-                app.current_screen = app.prev_screen;
+                app.switch_to_prev_screen();
                 app.active_widget = Some(ActiveWidget::Editor);
             }
             (Screen::Exiting, Action::Confirm) => {
                 Self::exit(app);
             },
             (Screen::Exiting, Action::Cancel) => {
-                    app.current_screen = app.prev_screen;
-                    app.active_widget = Some(ActiveWidget::Editor);
+                app.switch_to_prev_screen();
+                app.active_widget = Some(ActiveWidget::Editor);
             }
             _ => {}
         }
