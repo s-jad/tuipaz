@@ -151,56 +151,48 @@ impl Widget for NoteList {
             title_style,
             list_info_style,
             list_item_style,
-            highlight_clr
         ) = match (self.state, self.mode) {
             (ComponentState::Active, NoteListMode::Fullscreen) => (
                 Style::default().bold().fg(self.theme.borders),
                 Style::default().bold().fg(self.theme.title),
                 Style::default().bold(),
                 Style::default(),
-                Color::Red,
             ),
             (ComponentState::Inactive, NoteListMode::Fullscreen) => (
                 Style::default().bold().fg(self.theme.borders).dim(),
                 Style::default().bold().fg(self.theme.title).dim(),
                 Style::default().bold().dim(),
                 Style::default().dim(),
-                Color::default(),
             ),
             (ComponentState::Unavailable, NoteListMode::Fullscreen) => (
                 Style::default().dim(),
                 Style::default().dim(),
                 Style::default().dim(),
                 Style::default().dim(),
-                Color::default(),
             ),
             (ComponentState::Error, NoteListMode::Fullscreen) => (
                 Style::default().bold().fg(self.theme.borders),
                 Style::default().bold().fg(Color::Red),
                 Style::default().bold().fg(Color::Red),
                 Style::default(),
-                Color::Red,
             ),
             (ComponentState::Active, NoteListMode::Sidebar) => (
                 Style::default().bold().fg(self.theme.borders),
                 Style::default().bold().fg(self.theme.title),
                 Style::default().bold(),
                 Style::default(),
-                Color::Red,
             ),
             (ComponentState::Inactive, NoteListMode::Sidebar) => (
                 Style::default().bold().fg(self.theme.borders).dim(),
                 Style::default().bold().fg(self.theme.title).dim(),
                 Style::default().bold().dim(),
                 Style::default().dim(),
-                Color::default(),
             ),
             _ => (
                 Style::default(),
                 Style::default(),
                 Style::default(),
                 Style::default(),
-                Color::Red,
             )
         };
 
