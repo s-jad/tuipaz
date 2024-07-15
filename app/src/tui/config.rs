@@ -1,8 +1,18 @@
-use std::{fs, num::ParseIntError, fmt::{Display, self}, error::Error, env, collections::HashMap};
+use std::{
+    collections::HashMap,
+    env,
+    error::Error,
+    fmt::{self, Display},
+    fs,
+    num::ParseIntError,
+};
 
 use log::info;
-use ratatui::style::{Color, self, Modifier};
-use serde::{Deserialize, de::{MapAccess, Visitor}, Deserializer};
+use ratatui::style::{self, Color, Modifier};
+use serde::{
+    de::{MapAccess, Visitor},
+    Deserialize, Deserializer,
+};
 use tuipaz_textarea::{Input, Key};
 
 use super::events::Action;
@@ -253,7 +263,7 @@ impl KeyMap {
 }
 
 impl<'de> Deserialize<'de> for KeyMap {
-  fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
     {
@@ -261,14 +271,14 @@ impl<'de> Deserialize<'de> for KeyMap {
 
         impl<'de> Visitor<'de> for KeyMapVisitor {
             type Value = KeyMap;
-            
+
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("Expecting an action and a input")
             }
 
-            fn visit_map<M>(self, mut access: M) -> Result<KeyMap, M::Error> 
-            where 
-                M: MapAccess<'de>
+            fn visit_map<M>(self, mut access: M) -> Result<KeyMap, M::Error>
+            where
+                M: MapAccess<'de>,
             {
                 let mut key_map = HashMap::new();
 
@@ -280,9 +290,13 @@ impl<'de> Deserialize<'de> for KeyMap {
 
                     if input.contains('-') {
                         let mut parts = input.split('-');
-                        let modifier_part = parts.next().ok_or_else(|| serde::de::Error::custom("Modifier part missing"))?;
-                        let key_part = parts.next().ok_or_else(|| serde::de::Error::custom("Key part missing"))?;
-                        
+                        let modifier_part = parts
+                            .next()
+                            .ok_or_else(|| serde::de::Error::custom("Modifier part missing"))?;
+                        let key_part = parts
+                            .next()
+                            .ok_or_else(|| serde::de::Error::custom("Key part missing"))?;
+
                         key = match key_part.chars().next() {
                             Some(c) => Key::Char(c),
                             None => return Err(serde::de::Error::custom("Invalid key")),
@@ -300,17 +314,22 @@ impl<'de> Deserialize<'de> for KeyMap {
                                     "enter" => Key::Enter,
                                     _ => Key::Null,
                                 };
-                            },
+                            }
                             false => {
                                 key = match input.chars().next() {
                                     Some(c) => Key::Char(c),
                                     None => return Err(serde::de::Error::custom("Invalid key")),
                                 };
-                            },
+                            }
                         }
-                    }                     
+                    }
 
-                    let i = Input { key, ctrl, alt, shift };
+                    let i = Input {
+                        key,
+                        ctrl,
+                        alt,
+                        shift,
+                    };
                     let a = get_action(&action, i);
                     key_map.insert(a, i);
                 }
@@ -327,20 +346,20 @@ pub(crate) struct Colors(pub HashMap<String, String>);
 impl<'de> Deserialize<'de> for Colors {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> 
+        D: serde::Deserializer<'de>,
     {
         struct ColorMapVisitor;
 
         impl<'de> Visitor<'de> for ColorMapVisitor {
             type Value = Colors;
-            
+
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("Expecting a color name and hex code")
             }
 
-            fn visit_map<M>(self, mut access: M) -> Result<Colors, M::Error> 
-            where 
-                M: MapAccess<'de>
+            fn visit_map<M>(self, mut access: M) -> Result<Colors, M::Error>
+            where
+                M: MapAccess<'de>,
             {
                 let mut color_map = HashMap::new();
 
@@ -354,13 +373,12 @@ impl<'de> Deserialize<'de> for Colors {
     }
 }
 
-
 #[derive(Debug, Clone)]
 pub(crate) struct HeadingsTheme {
-    pub (crate) main_color: Color,
-    pub (crate) main_modifiers: Vec<Modifier>,
-    pub (crate) sub_color: Color,
-    pub (crate) sub_modifiers: Vec<Modifier>,
+    pub(crate) main_color: Color,
+    pub(crate) main_modifiers: Vec<Modifier>,
+    pub(crate) sub_color: Color,
+    pub(crate) sub_modifiers: Vec<Modifier>,
 }
 
 impl HeadingsTheme {
@@ -377,20 +395,20 @@ impl HeadingsTheme {
 impl<'de> Deserialize<'de> for HeadingsTheme {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> 
+        D: serde::Deserializer<'de>,
     {
         struct HTVisitor;
 
         impl<'de> Visitor<'de> for HTVisitor {
             type Value = HeadingsTheme;
-            
+
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("Expecting a key and headings theme value")
             }
 
-            fn visit_map<M>(self, mut access: M) -> Result<HeadingsTheme, M::Error> 
-            where 
-                M: MapAccess<'de>
+            fn visit_map<M>(self, mut access: M) -> Result<HeadingsTheme, M::Error>
+            where
+                M: MapAccess<'de>,
             {
                 let mut ht = HeadingsTheme::default();
                 let mut main_modifiers = vec![];
@@ -399,30 +417,30 @@ impl<'de> Deserialize<'de> for HeadingsTheme {
                 while let Some((key, value)) = access.next_entry::<String, String>()? {
                     match key.as_str() {
                         "main_color" => {
-                            let mc = 
-                                try_convert_color(Some(value), Color::Green).unwrap_or(Color::Green);
+                            let mc = try_convert_color(Some(value), Color::Green)
+                                .unwrap_or(Color::Green);
                             ht.main_color = mc;
-                        } 
+                        }
                         "sub_color" => {
-                           let sc =  
-                                try_convert_color(Some(value), Color::Magenta).unwrap_or(Color::Magenta);
+                            let sc = try_convert_color(Some(value), Color::Magenta)
+                                .unwrap_or(Color::Magenta);
                             ht.sub_color = sc;
-                        } 
+                        }
                         "main_bold" => {
                             if value == "true" {
                                 main_modifiers.push(Modifier::BOLD);
                             }
-                        } 
+                        }
                         "main_italic" => {
                             if value == "true" {
                                 main_modifiers.push(Modifier::ITALIC);
                             }
-                        } 
+                        }
                         "main_underlined" => {
                             if value == "true" {
                                 main_modifiers.push(Modifier::UNDERLINED);
                             }
-                        } 
+                        }
                         "sub_bold" => {
                             if value == "true" {
                                 sub_modifiers.push(Modifier::BOLD);
@@ -470,20 +488,20 @@ impl NoteListTheme {
 impl<'de> Deserialize<'de> for NoteListTheme {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
-        D: serde::Deserializer<'de> 
+        D: serde::Deserializer<'de>,
     {
         struct NLTVisitor;
 
         impl<'de> Visitor<'de> for NLTVisitor {
             type Value = NoteListTheme;
-            
+
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str("Expecting a key and note list theme value")
             }
 
-            fn visit_map<M>(self, mut access: M) -> Result<NoteListTheme, M::Error> 
-            where 
-                M: MapAccess<'de>
+            fn visit_map<M>(self, mut access: M) -> Result<NoteListTheme, M::Error>
+            where
+                M: MapAccess<'de>,
             {
                 let mut nlt = NoteListTheme::default();
 
@@ -491,28 +509,18 @@ impl<'de> Deserialize<'de> for NoteListTheme {
                     match key.as_str() {
                         "selection_modifier" => {
                             nlt.selection_modifier = match hex.as_str() {
-                                "bold" => {
-                                   Modifier::BOLD 
-                                },
-                                "italic" => {
-                                    Modifier::ITALIC
-                                },
-                                "underlined" => {
-                                    Modifier::UNDERLINED
-                                },
-                                "reversed" => {
-                                    Modifier::REVERSED
-                                },
-                                _ => Modifier::BOLD
+                                "bold" => Modifier::BOLD,
+                                "italic" => Modifier::ITALIC,
+                                "underlined" => Modifier::UNDERLINED,
+                                "reversed" => Modifier::REVERSED,
+                                _ => Modifier::BOLD,
                             }
-                        },
-                        "selection_symbol" => {
-                            nlt.selection_symbol = hex.to_owned()
-                        },
+                        }
+                        "selection_symbol" => nlt.selection_symbol = hex.to_owned(),
                         "selection_highlight" => {
-                            nlt.selection_highlight = 
-                                try_convert_color(Some(hex), Color::Magenta).unwrap_or(Color::Magenta)
-                        },
+                            nlt.selection_highlight = try_convert_color(Some(hex), Color::Magenta)
+                                .unwrap_or(Color::Magenta)
+                        }
                         _ => {}
                     }
                 }
@@ -528,9 +536,9 @@ pub(crate) struct ModeTheme {
     pub(crate) normal_mode: String,
     pub(crate) insert_mode: String,
     pub(crate) visual_mode: String,
+    pub(crate) visual_line_mode: String,
     pub(crate) search_mode: String,
 }
-
 
 #[derive(Debug, Clone, Deserialize)]
 pub(crate) struct HighlightTheme {
@@ -579,7 +587,7 @@ impl Theme {
             modes,
             highlights,
             notelist,
-            headings
+            headings,
         }
     }
 
@@ -592,8 +600,9 @@ impl Theme {
                 normal_mode: Color::Yellow,
                 insert_mode: Color::Cyan,
                 visual_mode: Color::Magenta,
+                visual_line_mode: Color::LightMagenta,
                 search_mode: Color::Red,
-            }, 
+            },
             highlights: HighlightColors {
                 links: Color::Blue,
                 select: Color::Magenta,
@@ -610,7 +619,7 @@ impl Theme {
                 main_modifiers: vec![Modifier::BOLD, Modifier::UNDERLINED],
                 sub_color: Color::Magenta,
                 sub_modifiers: vec![Modifier::ITALIC],
-            }
+            },
         }
     }
 }
@@ -628,6 +637,7 @@ pub(crate) struct ModeColors {
     pub(crate) normal_mode: Color,
     pub(crate) insert_mode: Color,
     pub(crate) visual_mode: Color,
+    pub(crate) visual_line_mode: Color,
     pub(crate) search_mode: Color,
 }
 
@@ -650,10 +660,7 @@ impl Config {
         let theme = get_theme(temp_config)?;
         complete_keymap(&mut keymap);
 
-        Ok(Self {
-            theme,
-            keymap,
-        })
+        Ok(Self { theme, keymap })
     }
 
     fn default() -> Self {
@@ -661,10 +668,7 @@ impl Config {
         let mut keymap = HashMap::new();
         complete_keymap(&mut keymap);
 
-        Config {
-            theme,
-            keymap,
-        }
+        Config { theme, keymap }
     }
 }
 
@@ -718,7 +722,7 @@ impl From<ParseIntError> for HexColorError {
 }
 
 fn hex_to_color(hex: &str) -> Result<style::Color, HexColorError> {
-    if hex.len()!= 7 ||!hex.starts_with('#') {
+    if hex.len() != 7 || !hex.starts_with('#') {
         return Err(HexColorError::InvalidFormat);
     }
     let r = u8::from_str_radix(&hex[1..3], 16)?;
@@ -738,65 +742,123 @@ impl Display for ColorConversionError {
     }
 }
 
-fn try_convert_color(user_color: Option<String>, default: Color) -> Result<Color, ColorConversionError> {
+fn try_convert_color(
+    user_color: Option<String>,
+    default: Color,
+) -> Result<Color, ColorConversionError> {
     if let Some(c) = user_color {
         match hex_to_color(&c) {
             Ok(color) => Ok(color),
-            Err(e) => Err(ColorConversionError{ message: format!("Failed to convert '{}' to a color: {:?}", c, e) }),
+            Err(e) => Err(ColorConversionError {
+                message: format!("Failed to convert '{}' to a color: {:?}", c, e),
+            }),
         }
     } else {
         Ok(default)
     }
 }
 
+macro_rules! convert_color {
+    ($config:expr, $theme_path:expr, $default_option:expr) => {{
+        let color_option = $config.colors.0.get($theme_path).cloned();
+
+        try_convert_color(color_option, $default_option)
+    }};
+}
+
 fn get_theme(temp_config: TempConfig) -> Result<Theme, ConfigError> {
     let default_theme = Theme::default();
 
-    let title = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.note_title).cloned(),
+    let title = convert_color!(
+        temp_config,
+        &temp_config.theme.note_title,
         default_theme.note_title
     )?;
     let text = try_convert_color(
         temp_config.colors.0.get(&temp_config.theme.text).cloned(),
-        default_theme.text
+        default_theme.text,
     )?;
     let normal_mode = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.modes.normal_mode).cloned(), 
-        default_theme.modes.normal_mode
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.modes.normal_mode)
+            .cloned(),
+        default_theme.modes.normal_mode,
     )?;
-    let insert_mode  = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.modes.insert_mode).cloned(),
-        default_theme.modes.insert_mode
+    let insert_mode = try_convert_color(
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.modes.insert_mode)
+            .cloned(),
+        default_theme.modes.insert_mode,
     )?;
-    let visual_mode  = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.modes.visual_mode).cloned(),
-        default_theme.modes.visual_mode
+    let visual_mode = try_convert_color(
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.modes.visual_mode)
+            .cloned(),
+        default_theme.modes.visual_mode,
+    )?;
+    let visual_line_mode = try_convert_color(
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.modes.visual_line_mode)
+            .cloned(),
+        default_theme.modes.visual_line_mode,
     )?;
     let search_mode = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.modes.search_mode).cloned(),
-        default_theme.modes.search_mode
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.modes.search_mode)
+            .cloned(),
+        default_theme.modes.search_mode,
     )?;
-    let links = try_convert_color
-        (temp_config.colors.0.get(&temp_config.theme.highlights.links).cloned(),
-        default_theme.highlights.links
+    let links = try_convert_color(
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.highlights.links)
+            .cloned(),
+        default_theme.highlights.links,
     )?;
     let select = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.highlights.select).cloned(),
-        default_theme.highlights.select
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.highlights.select)
+            .cloned(),
+        default_theme.highlights.select,
     )?;
     let search = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.highlights.search).cloned(),
-        default_theme.highlights.search
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.highlights.search)
+            .cloned(),
+        default_theme.highlights.search,
     )?;
     let hop = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.highlights.hop).cloned(),
-        default_theme.highlights.hop
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.highlights.hop)
+            .cloned(),
+        default_theme.highlights.hop,
     )?;
     let borders = try_convert_color(
-        temp_config.colors.0.get(&temp_config.theme.borders).cloned(),
-        default_theme.borders
+        temp_config
+            .colors
+            .0
+            .get(&temp_config.theme.borders)
+            .cloned(),
+        default_theme.borders,
     )?;
-    
+
     let highlights = HighlightColors {
         links,
         select,
@@ -807,12 +869,13 @@ fn get_theme(temp_config: TempConfig) -> Result<Theme, ConfigError> {
         normal_mode,
         insert_mode,
         visual_mode,
-        search_mode
+        visual_line_mode,
+        search_mode,
     };
 
     Ok(Theme::new(
         title,
-        text, 
+        text,
         borders,
         modes,
         highlights,
@@ -825,7 +888,7 @@ pub(crate) fn try_load_config() -> Result<Config, ConfigError> {
     let path = env::current_dir().unwrap();
     let config_path = path.join("config.toml");
     let metadata = fs::metadata(&config_path);
-    
+
     // Sanity check - metadata means file exists
     if metadata.is_ok() {
         let content = fs::read_to_string(config_path)?;
