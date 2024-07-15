@@ -1,18 +1,19 @@
-use std::collections::HashMap;
-use std::cmp;
-use color_eyre::eyre::{Context, Result, eyre};
+use color_eyre::eyre::{eyre, Context, Result};
 use crossterm::event::{self, Event, KeyEventKind};
-use log::{info, error};
+use log::{error, info};
+use std::cmp;
+use std::collections::HashMap;
 use tuipaz_textarea::{Input, Key};
 
 use crate::db::db_mac::{DbMac, DbNoteLink, NoteIdentifier};
 
 use super::{
-    app::{ActiveWidget, App, AppState, Screen, SidebarState, ComponentState, SearchbarState},
+    app::{ActiveWidget, App, AppState, ComponentState, Screen, SearchbarState, SidebarState},
     buttons::ButtonAction,
-    editor::{Link, EditorMode},
+    editor::{EditorMode, Link},
     inputs::{InputAction, UserInput},
-    user_messages::{MessageType, UserMessage}, note_list::{NoteListMode, NoteListAction},
+    note_list::{NoteListAction, NoteListMode},
+    user_messages::{MessageType, UserMessage},
 };
 
 const DELETE_KEYS: [Key; 10] = [
@@ -57,7 +58,7 @@ pub(crate) enum Action {
     Null,
 }
 
- impl PartialEq for Action {
+impl PartialEq for Action {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
             // Compare variants without associated data
@@ -110,28 +111,95 @@ impl Events {
 
     fn handle_key_event(input: Input) -> Action {
         match input {
-            Input { key: Key::Char('q'), alt: true, ..  } => Action::ShowExitScreen,
+            Input {
+                key: Key::Char('q'),
+                alt: true,
+                ..
+            } => Action::ShowExitScreen,
             Input { key: Key::Esc, .. } => Action::Esc,
-            Input { key: Key::Tab, alt: false, .. } => Action::Tab,
-            Input { key: Key::Enter, .. } => Action::Activate(input),
-            Input { key: Key::Char('s'), alt: true, .. } => Action::SaveNote,
-            Input { key: Key::Char('l'), alt: true, .. } => Action::LoadNote,
-            Input { key: Key::Char('n'), alt: true, .. } => Action::NewNote,
-            Input { key: Key::Char('t'), alt: true, .. } => Action::NewTitle,
-            Input { key: Key::Char('d'), alt: true, .. } => Action::DeleteNote,
-            Input { key: Key::Char('/'), .. } => Action::ToggleSearchbar(input),
-            Input { key: Key::Char('f'), alt: true, .. } => Action::ToggleSidebar,
-            Input { key: Key::Char(','), alt: true, .. } => Action::IncreaseSidebar,
-            Input { key: Key::Char('.'), alt: true, .. } => Action::DecreaseSidebar,  
-            Input { key: Key::Char(']'), .. } => Action::InsertLink(input),
-            Input { key: Key::Tab, alt: true, .. } => Action::SwitchActiveWidget,
-            Input { key: Key::Backspace, .. } => Action::DeleteChar,
+            Input {
+                key: Key::Tab,
+                alt: false,
+                ..
+            } => Action::Tab,
+            Input {
+                key: Key::Enter, ..
+            } => Action::Activate(input),
+            Input {
+                key: Key::Char('s'),
+                alt: true,
+                ..
+            } => Action::SaveNote,
+            Input {
+                key: Key::Char('l'),
+                alt: true,
+                ..
+            } => Action::LoadNote,
+            Input {
+                key: Key::Char('n'),
+                alt: true,
+                ..
+            } => Action::NewNote,
+            Input {
+                key: Key::Char('t'),
+                alt: true,
+                ..
+            } => Action::NewTitle,
+            Input {
+                key: Key::Char('d'),
+                alt: true,
+                ..
+            } => Action::DeleteNote,
+            Input {
+                key: Key::Char('/'),
+                ..
+            } => Action::ToggleSearchbar(input),
+            Input {
+                key: Key::Char('f'),
+                alt: true,
+                ..
+            } => Action::ToggleSidebar,
+            Input {
+                key: Key::Char(','),
+                alt: true,
+                ..
+            } => Action::IncreaseSidebar,
+            Input {
+                key: Key::Char('.'),
+                alt: true,
+                ..
+            } => Action::DecreaseSidebar,
+            Input {
+                key: Key::Char(']'),
+                ..
+            } => Action::InsertLink(input),
+            Input {
+                key: Key::Tab,
+                alt: true,
+                ..
+            } => Action::SwitchActiveWidget,
+            Input {
+                key: Key::Backspace,
+                ..
+            } => Action::DeleteChar,
             Input { key: Key::Down, .. }
-            | Input { key: Key::Char('j'), .. } => Action::Down(input),
+            | Input {
+                key: Key::Char('j'),
+                ..
+            } => Action::Down(input),
             Input { key: Key::Up, .. }
-            | Input { key: Key::Char('k'), .. } => Action::Up(input),
-            Input { key: Key::Char('y'), .. } => Action::Confirm,
-            Input { key: Key::Char('n'), .. } => Action::Cancel,
+            | Input {
+                key: Key::Char('k'),
+                ..
+            } => Action::Up(input),
+            Input {
+                key: Key::Char('y'),
+                ..
+            } => Action::Confirm,
+            Input {
+                key: Key::Char('n'),
+                ..
+            } => Action::Cancel,
             input => Action::Edit(input),
         }
     }
@@ -141,10 +209,10 @@ impl Events {
             (Screen::Welcome, Action::ShowExitScreen) => {
                 app.prev_screen = app.current_screen;
                 Self::show_exit_screen(app);
-            },
+            }
             (Screen::Welcome, Action::Tab) => {
                 Self::switch_btns(app);
-            },
+            }
             (Screen::Welcome, Action::Activate(_)) => {
                 let btn_state = app.current_btn().get_state();
 
@@ -177,18 +245,26 @@ impl Events {
                 app.switch_to_new_note(InputAction::NoteTitle);
             }
             (Screen::Main, Action::DeleteChar) => {
-                let input = Input { key: Key::Backspace, ..Default::default() };
+                let input = Input {
+                    key: Key::Backspace,
+                    ..Default::default()
+                };
                 match app.active_widget {
                     Some(ActiveWidget::Editor) => app.editor.handle_input(input),
-                    Some(ActiveWidget::Searchbar) => { app.searchbar.input.delete_char(); },
-                    Some(_) | None => {},
+                    Some(ActiveWidget::Searchbar) => {
+                        app.searchbar.input.delete_char();
+                    }
+                    Some(_) | None => {}
                 }
             }
             (Screen::Main, Action::DeleteNote) => {
                 app.prev_screen = app.current_screen;
                 app.current_screen = Screen::DeleteNoteConfirmation;
                 app.user_msg = UserMessage::new(
-                    format!("Are you sure you want to delete {}? (y/n)", app.editor.title),
+                    format!(
+                        "Are you sure you want to delete {}? (y/n)",
+                        app.editor.title
+                    ),
                     MessageType::Warning,
                     None,
                 );
@@ -203,22 +279,18 @@ impl Events {
             (Screen::Main, Action::ToggleSidebar) => {
                 Self::toggle_sidebar(app);
             }
-            (Screen::Main, Action::IncreaseSidebar) => {
-                match app.sidebar_state {
-                    SidebarState::Open => {
-                        app.sidebar_size = cmp::min(app.sidebar_size + 2, 70);
-                    },
-                    SidebarState::Hidden(_) => {},
+            (Screen::Main, Action::IncreaseSidebar) => match app.sidebar_state {
+                SidebarState::Open => {
+                    app.sidebar_size = cmp::min(app.sidebar_size + 2, 70);
                 }
-            }
-            (Screen::Main, Action::DecreaseSidebar) => {
-                match app.sidebar_state {
-                    SidebarState::Open => {
-                        app.sidebar_size = cmp::max(app.sidebar_size - 2, 12);
-                    },
-                    SidebarState::Hidden(_) => {},
+                SidebarState::Hidden(_) => {}
+            },
+            (Screen::Main, Action::DecreaseSidebar) => match app.sidebar_state {
+                SidebarState::Open => {
+                    app.sidebar_size = cmp::max(app.sidebar_size - 2, 12);
                 }
-            }
+                SidebarState::Hidden(_) => {}
+            },
             (Screen::Main, Action::InsertLink(input)) => {
                 app.editor.handle_input(input);
 
@@ -226,10 +298,10 @@ impl Events {
                 if app.editor.body.new_link {
                     app.pending_link = Some(
                         *app.editor
-                        .body
-                        .links
-                        .get(&(app.editor.body.next_link_id - 1))
-                        .expect("Link should be present")
+                            .body
+                            .links
+                            .get(&(app.editor.body.next_link_id - 1))
+                            .expect("Link should be present"),
                     );
 
                     // Set the user_input widget to create a new linked note
@@ -244,11 +316,11 @@ impl Events {
                     app.editor.body.new_link = false;
                 }
             }
-           (Screen::Main, Action::SwitchActiveWidget) => match app.active_widget {
+            (Screen::Main, Action::SwitchActiveWidget) => match app.active_widget {
                 Some(ActiveWidget::Editor) => app.set_active_widget(ActiveWidget::Sidebar),
                 Some(ActiveWidget::Sidebar) => app.set_active_widget(ActiveWidget::Editor),
                 Some(_) | None => {}
-            }
+            },
             (Screen::Main, Action::Activate(input)) => match app.active_widget {
                 Some(ActiveWidget::Editor) => {
                     match app.editor.body.in_link(app.editor.body.cursor()) {
@@ -267,49 +339,51 @@ impl Events {
                             app.editor.body.input(input);
                         }
                     }
-                },
+                }
                 Some(ActiveWidget::Sidebar) => {
                     let note_idx = app.note_list.selected;
                     let id = app.note_list.note_identifiers[note_idx].id;
                     Self::load_note(app, id).await?;
-                },
+                }
                 Some(ActiveWidget::Searchbar) => {
                     app.searchbar.clear_search();
                     Self::toggle_searchbar(app);
-                },
-                Some(_) | None => {},
-            }
+                }
+                Some(_) | None => {}
+            },
             (Screen::Main, Action::Up(input)) => match app.active_widget {
                 Some(ActiveWidget::Editor) => app.editor.handle_input(input),
                 Some(ActiveWidget::Sidebar) => app.note_list.prev(),
-                Some(_) | None => {},
-            }
+                Some(_) | None => {}
+            },
             (Screen::Main, Action::Down(input)) => match app.active_widget {
                 Some(ActiveWidget::Editor) => app.editor.handle_input(input),
                 Some(ActiveWidget::Sidebar) => app.note_list.next(),
-                Some(_) | None => {},
-            }
+                Some(_) | None => {}
+            },
             (Screen::Main, Action::Confirm)
             | (Screen::Main, Action::Cancel)
             | (Screen::Main, Action::Esc)
             | (Screen::Main, Action::Tab) => {
-                let input = app.keymap.get(&action)
+                let input = app
+                    .keymap
+                    .get(&action)
                     .expect("keymap should contain bindings for all actions");
 
                 match app.active_widget {
                     Some(ActiveWidget::Editor) => {
                         app.editor.handle_input(*input);
-                    },
+                    }
                     Some(ActiveWidget::Searchbar) => {
                         app.searchbar.handle_input(*input);
                         if app.searchbar.state == ComponentState::Inactive {
                             app.editor.searchbar_open = false;
                             app.searchbar_state = SearchbarState::Hidden;
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
-            } 
+            }
             (Screen::Main, Action::Edit(input)) => match app.active_widget {
                 Some(ActiveWidget::Editor) => {
                     app.editor.handle_input(input);
@@ -327,7 +401,7 @@ impl Events {
                     if !app.editor.links.is_empty() {
                         Self::check_link_moved(app);
                     }
-                },
+                }
                 Some(ActiveWidget::Searchbar) => {
                     app.searchbar.input.input(input);
                     let search_pattern = &app.searchbar.get_search_text();
@@ -336,16 +410,16 @@ impl Events {
                         Err(e) => error!("Error searching for {:?}: {:?}", search_pattern, e),
                     }
                 }
-                Some(_) | None => {},
-            }
+                Some(_) | None => {}
+            },
             (Screen::NewNote, Action::ShowExitScreen) => {
                 app.prev_screen = app.current_screen;
                 Self::show_exit_screen(app);
-            },
+            }
             (Screen::NewNote, Action::Esc) => {
                 app.switch_to_prev_screen();
                 app.active_widget = Some(ActiveWidget::Editor);
-            },
+            }
             (Screen::NewNote, Action::Activate(_)) => match app.user_input.get_action() {
                 InputAction::NoteTitle => Self::input_new_note_title(app),
                 InputAction::Note => Self::input_new_note(app, false).await?,
@@ -356,17 +430,19 @@ impl Events {
                 if app.user_input.get_state() == ComponentState::Error {
                     app.user_input.set_state(ComponentState::Active);
                 }
-            },
+            }
             (Screen::NewNote, Action::Confirm)
             | (Screen::NewNote, Action::Cancel)
             | (Screen::NewNote, Action::Tab) => {
-                let input = app.keymap.get(&action)
+                let input = app
+                    .keymap
+                    .get(&action)
                     .expect("keymap should contain bindings for all actions");
                 app.user_input.text.input(*input);
             }
-           (Screen::NewNote, Action::Edit(input)) => {
+            (Screen::NewNote, Action::Edit(input)) => {
                 app.user_input.text.input(input);
-            },
+            }
             (Screen::NewLinkedNote, Action::ShowExitScreen) => {
                 app.prev_screen = app.current_screen;
                 Self::show_exit_screen(app);
@@ -376,8 +452,9 @@ impl Events {
                 app.note_list.set_mode(NoteListMode::Sidebar);
                 app.note_list.set_action(NoteListAction::LoadNote);
                 app.active_widget = Some(ActiveWidget::Editor);
-                app.editor.body.delete_link(app.editor.body.next_link_id - 1);
-                
+                app.editor
+                    .body
+                    .delete_link(app.editor.body.next_link_id - 1);
             }
             (Screen::NewLinkedNote, Action::Activate(_)) => {
                 if app.active_widget == Some(ActiveWidget::NoteTitleInput) {
@@ -442,7 +519,7 @@ impl Events {
                 } else {
                     app.current_screen = app.prev_screen;
                 }
-            },
+            }
             (Screen::DeleteNoteConfirmation, Action::Esc) => {
                 app.switch_to_prev_screen();
             }
@@ -466,7 +543,7 @@ impl Events {
             }
             (Screen::Exiting, Action::Confirm) => {
                 Self::exit(app);
-            },
+            }
             (Screen::Exiting, Action::Cancel) => {
                 app.switch_to_prev_screen();
                 app.active_widget = Some(ActiveWidget::Editor);
@@ -494,7 +571,10 @@ impl Events {
             ),
         };
 
-        info!("fn save_note\nupdated: {:?}\nsave_note_result: {:?}", updated, save_note_result);
+        info!(
+            "fn save_note\nupdated: {:?}\nsave_note_result: {:?}",
+            updated, save_note_result
+        );
 
         match save_note_result {
             Ok(parent_id) => {
@@ -517,7 +597,7 @@ impl Events {
                     // Triggers update_note on next save
                     app.editor.note_id = Some(parent_id);
                 }
-                
+
                 match has_links {
                     true => {
                         let sync_db_links_result = Self::sync_db_links(app).await;
@@ -550,13 +630,10 @@ impl Events {
                                 Err(err)
                             }
                         }
-                    }   
+                    }
                     false => {
-                        app.user_msg = UserMessage::new(
-                            "Note saved!".to_string(),
-                            MessageType::Info,
-                            None,
-                        );
+                        app.user_msg =
+                            UserMessage::new("Note saved!".to_string(), MessageType::Info, None);
                         app.prev_screen = app.current_screen;
                         app.current_screen = Screen::Popup;
                         Ok(())
@@ -575,7 +652,7 @@ impl Events {
             }
         }
     }
-    
+
     fn check_links_to_update(link: &&Link) -> bool {
         !link.deleted && link.saved && link.updated
     }
@@ -588,7 +665,10 @@ impl Events {
         link.deleted && link.saved
     }
 
-    async fn update_links(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, app: &mut App<'_>) -> Result<()> {
+    async fn update_links(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        app: &mut App<'_>,
+    ) -> Result<()> {
         let links_to_update = app
             .editor
             .links
@@ -596,17 +676,26 @@ impl Events {
             .filter(Self::check_links_to_update)
             .map(|link| link.to_db_link())
             .collect::<Vec<DbNoteLink>>();
-        
+
         info!("fn update_links\nlinks_to_update: {:?}", links_to_update);
 
         if !links_to_update.is_empty() {
-            DbMac::update_links(tx, &app.db, links_to_update, app.editor.note_id.expect("Note should have an id")).await?
+            DbMac::update_links(
+                tx,
+                &app.db,
+                links_to_update,
+                app.editor.note_id.expect("Note should have an id"),
+            )
+            .await?
         }
 
         Ok(())
     }
 
-    async fn save_links(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, app: &mut App<'_>) -> Result<()> {
+    async fn save_links(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        app: &mut App<'_>,
+    ) -> Result<()> {
         let links_to_save = app
             .editor
             .links
@@ -614,17 +703,26 @@ impl Events {
             .filter(Self::check_links_to_save)
             .map(|link| link.to_db_link())
             .collect::<Vec<DbNoteLink>>();
-        
+
         info!("fn save_links\nlinks_to_save: {:?}", links_to_save);
 
         if !links_to_save.is_empty() {
-            DbMac::save_links(tx, &app.db, links_to_save, app.editor.note_id.expect("Note should have an id")).await?
+            DbMac::save_links(
+                tx,
+                &app.db,
+                links_to_save,
+                app.editor.note_id.expect("Note should have an id"),
+            )
+            .await?
         }
 
         Ok(())
     }
 
-    async fn delete_links(tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>, app: &mut App<'_>) -> Result<()> {
+    async fn delete_links(
+        tx: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
+        app: &mut App<'_>,
+    ) -> Result<()> {
         let parent_note_id = app.editor.note_id.expect("Note should have an id");
 
         let links_to_delete = app
@@ -634,7 +732,7 @@ impl Events {
             .filter(Self::check_links_to_delete)
             .map(|link| (parent_note_id, link.text_id))
             .collect::<Vec<(i64, i64)>>();
-        
+
         info!("fn delete_links\nlinks_to_delete: {:?}", links_to_delete);
 
         if !links_to_delete.is_empty() {
@@ -644,15 +742,14 @@ impl Events {
         Ok(())
     }
 
-    async fn sync_db_links(
-        app: &mut App<'_>, 
-    ) -> Result<()> {
+    async fn sync_db_links(app: &mut App<'_>) -> Result<()> {
         let mut tx = app.db.begin().await?;
         info!("fn sync_db_links\neditor links: {:?}", app.editor.links);
         let update_links_result = Self::update_links(&mut tx, app).await;
         let save_links_result = Self::save_links(&mut tx, app).await;
         let delete_links_result = Self::delete_links(&mut tx, app).await;
-        info!("update_links_result: {:?}\nsave_links_result: {:?}\ndelete_links_result: {:?}",
+        info!(
+            "update_links_result: {:?}\nsave_links_result: {:?}\ndelete_links_result: {:?}",
             update_links_result, save_links_result, delete_links_result
         );
 
@@ -660,56 +757,61 @@ impl Events {
             (Ok(_), Ok(_), Ok(_)) => {
                 tx.commit().await?;
                 Ok(())
-            },
-            (Err(se), Ok(_), Ok(_)) =>{
+            }
+            (Err(se), Ok(_), Ok(_)) => {
                 tx.rollback().await?;
                 Err(eyre!("Transaction error::update_links: {:?}", se))
-            },
+            }
             (Ok(_), Err(de), Ok(_)) => {
                 tx.rollback().await?;
-               Err(eyre!("Transaction error::delete_links: {:?}", de))
-            },
+                Err(eyre!("Transaction error::delete_links: {:?}", de))
+            }
             (Ok(_), Ok(_), Err(ue)) => {
                 tx.rollback().await?;
                 Err(eyre!("Transaction error::update_links: {:?}", ue))
-            },
-            (Err(se), Err(de), Ok(_)) =>{
+            }
+            (Err(se), Err(de), Ok(_)) => {
                 tx.rollback().await?;
                 Err(eyre!(
                     "Transaction errors\n
                     save_links: {:?}\n
                     delete_links: {:?}",
-                    se, de)
-                )
-            },
-            (Ok(_), Err(de), Err(ue)) =>{
+                    se,
+                    de
+                ))
+            }
+            (Ok(_), Err(de), Err(ue)) => {
                 tx.rollback().await?;
                 Err(eyre!(
                     "Transaction errors\n
                     delete_links: {:?}\n
                     update_links: {:?}",
-                    de, ue)
-                )
-             },
-            (Err(se), Ok(_), Err(ue)) =>{
+                    de,
+                    ue
+                ))
+            }
+            (Err(se), Ok(_), Err(ue)) => {
                 tx.rollback().await?;
                 Err(eyre!(
                     "Transaction errors\n
                     save_links: {:?}\n
                     update_links: {:?}",
-                    se, ue)
-                )
-             },
-            (Err(se), Err(de), Err(ue)) =>{
+                    se,
+                    ue
+                ))
+            }
+            (Err(se), Err(de), Err(ue)) => {
                 tx.rollback().await?;
                 Err(eyre!(
                     "Transaction errors\n
                     save_links: {:?}\n
                     delete_links: {:?}\n
                     update_links: {:?}",
-                    se, de, ue)
-                )
-             },
+                    se,
+                    de,
+                    ue
+                ))
+            }
         }
     }
 
@@ -742,37 +844,26 @@ impl Events {
                 };
 
                 info!("load_note::links for editor: {:?}", links);
-                
+
                 // Save current note before loading new one
                 let has_links = !matches!(app.editor.links.len(), 0);
                 let sync_title = &app.editor.title.clone();
                 let sync_body = &app.editor.body.lines().join("\n");
                 let sync_note_db_result = if sync_title != " Untitled " {
                     info!("saving note with title: {:?}", sync_title);
-                    Self::save_note(
-                        app,
-                        sync_title,
-                        sync_body,
-                        has_links,
-                        app.editor.note_id,
-                    ).await
+                    Self::save_note(app, sync_title, sync_body, has_links, app.editor.note_id).await
                 } else {
                     Ok(())
                 };
 
                 match sync_note_db_result {
                     Ok(_) => {
-                        app.editor.refresh(
-                            note.title, 
-                            body, 
-                            links, 
-                            Some(note.id), 
-                            app.max_col,
-                        );
+                        app.editor
+                            .refresh(note.title, body, links, Some(note.id), app.max_col);
 
                         app.switch_to_main();
                         Ok(())
-                    },
+                    }
                     Err(err) => {
                         app.user_msg = UserMessage::new(
                             format!("Error saving current note!: {:?}", err),
@@ -782,7 +873,7 @@ impl Events {
                         app.prev_screen = app.current_screen;
                         app.current_screen = Screen::Popup;
                         Err(err)
-                    },
+                    }
                 }
             }
             Err(err) => {
@@ -842,9 +933,7 @@ impl Events {
             // If no pre-exisiting notes have that title, create and save new note with that title
             false => {
                 let linked_body = "";
-                let result =
-                    DbMac::save_note(&app.db, &linked_title, linked_body, false)
-                        .await;
+                let result = DbMac::save_note(&app.db, &linked_title, linked_body, false).await;
 
                 match result {
                     Ok(id) => {
@@ -862,9 +951,14 @@ impl Events {
                             let parent_body = app.editor.body.lines().join("\n");
                             let has_links = true;
                             let note_id = app.editor.note_id;
-                            let parent_result =
-                                Self::save_note(app, &parent_title, &parent_body, has_links, note_id)
-                                    .await;
+                            let parent_result = Self::save_note(
+                                app,
+                                &parent_title,
+                                &parent_body,
+                                has_links,
+                                note_id,
+                            )
+                            .await;
 
                             match parent_result {
                                 Ok(_) => {
@@ -926,7 +1020,7 @@ impl Events {
             updated: false,
             deleted: false,
         };
-        
+
         let link_id = new_link.text_id;
         app.editor.links.insert(link_id, new_link);
         app.switch_to_main();
@@ -935,7 +1029,11 @@ impl Events {
 
     fn check_link_edits(app: &mut App<'_>) {
         for link in app.editor.links.values_mut() {
-            let ta_link = app.editor.body.links.get(&(link.text_id as usize))
+            let ta_link = app
+                .editor
+                .body
+                .links
+                .get(&(link.text_id as usize))
                 .expect("editor links and textarea links should be synced");
             link.deleted = ta_link.deleted;
         }
@@ -951,8 +1049,17 @@ impl Events {
                     ed_link.updated = true;
                 }
             } else {
-                let prev_copy_id = app.editor.body.copied_link_ids.remove(&ta_link.id).expect("link already exists");
-                let linked_note_id = app.editor.links.get(&(prev_copy_id as i64)).expect("prev copy should exist");
+                let prev_copy_id = app
+                    .editor
+                    .body
+                    .copied_link_ids
+                    .remove(&ta_link.id)
+                    .expect("link already exists");
+                let linked_note_id = app
+                    .editor
+                    .links
+                    .get(&(prev_copy_id as i64))
+                    .expect("prev copy should exist");
 
                 let copied_link = Link {
                     id: app.editor.note_id.expect("Note should have an id"),
@@ -973,19 +1080,23 @@ impl Events {
 
     fn check_link_deletion(app: &mut App<'_>, key: &Key) {
         let delete_amount = app.editor.body.deleted_link_ids.len();
-        
+
         if DELETE_KEYS.contains(key) && delete_amount > 0 {
             for _ in 0..delete_amount {
-                let textarea_id = app.editor
+                let textarea_id = app
+                    .editor
                     .body
                     .deleted_link_ids
                     .pop()
                     .expect("Link to delete should exist");
-                
+
                 // guards against cases where link hasn't been saved to editor yet
                 if !app.editor.links.is_empty() {
                     let ta_id_int = textarea_id as i64;
-                    let link = app.editor.links.get_mut(&ta_id_int)
+                    let link = app
+                        .editor
+                        .links
+                        .get_mut(&ta_id_int)
                         .expect("editor and textarea links should be synced");
                     link.deleted = true;
                     app.editor.deleted_link_ids.push(ta_id_int);
@@ -996,10 +1107,13 @@ impl Events {
 
     fn check_link_moved(app: &mut App) {
         for link in app.editor.links.values_mut() {
-            let ta_link = app.editor.body.links
+            let ta_link = app
+                .editor
+                .body
+                .links
                 .get(&(link.text_id as usize))
                 .expect("Same links should be present in editor and textarea");
-            
+
             if link.moved(ta_link) {
                 link.row = ta_link.row;
                 link.start_col = ta_link.start_col;
@@ -1027,7 +1141,7 @@ impl Events {
             }
         }
     }
-    
+
     fn toggle_searchbar(app: &mut App) {
         match app.searchbar_state {
             SearchbarState::Open => {
