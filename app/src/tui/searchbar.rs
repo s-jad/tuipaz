@@ -1,6 +1,11 @@
 use log::info;
-use ratatui::{widgets::{Borders, Block, Padding, Widget}, symbols, style::{Modifier, Style, Color}, text::{Span, Line}};
-use tuipaz_textarea::{TextInput, Input, Key};
+use ratatui::{
+    style::{Color, Modifier, Style},
+    symbols,
+    text::{Line, Span},
+    widgets::{Block, Borders, Padding, Widget},
+};
+use tuipaz_textarea::{Input, Key, TextInput};
 
 use super::app::ComponentState;
 
@@ -20,14 +25,19 @@ pub(crate) struct SearchbarTheme {
 }
 
 impl<'a> Searchbar<'a> {
-    pub(crate) fn new(sidebar_open: bool, state: ComponentState, max_col: u16, theme: SearchbarTheme) -> Self {
+    pub(crate) fn new(
+        sidebar_open: bool,
+        state: ComponentState,
+        max_col: u16,
+        theme: SearchbarTheme,
+    ) -> Self {
         let input = TextInput::new("".to_owned(), max_col, theme.text, "Search...".to_owned());
 
         Self {
             input,
             sidebar_open,
             state,
-            theme, 
+            theme,
         }
     }
 
@@ -49,7 +59,6 @@ impl<'a> Searchbar<'a> {
             Input { key: Key::Esc, .. } => {
                 self.clear_search();
                 self.set_state(ComponentState::Inactive);
-                
             }
             _ => {
                 self.input.input(input);
@@ -68,10 +77,14 @@ impl<'a> Widget for Searchbar<'a> {
             false => (" <Alt-f> show files ".to_owned(), "╯"),
         };
 
-
         let (mode_span, key_hint_span, cursor_style) = match self.state {
             ComponentState::Active => (
-                Span::styled(" <| SEARCH |>", Style::default().add_modifier(Modifier::BOLD).fg(self.theme.search_mode)),
+                Span::styled(
+                    " <| SEARCH |>",
+                    Style::default()
+                        .add_modifier(Modifier::BOLD)
+                        .fg(self.theme.search_mode),
+                ),
                 Span::styled(
                     " | <Alt-q> quit | <Alt-s/l/d/n> save/load/delete/new | <Alt-t> edit title | ",
                     Style::default().add_modifier(Modifier::BOLD),
@@ -80,10 +93,7 @@ impl<'a> Widget for Searchbar<'a> {
             ),
             _ => (
                 Span::styled("", Style::default()),
-                Span::styled(
-                    "",
-                    Style::default(),
-                ),
+                Span::styled("", Style::default()),
                 Style::default(),
             ),
         };
@@ -97,17 +107,26 @@ impl<'a> Widget for Searchbar<'a> {
             false => (area.width - tb_bottom_len - 5) as usize,
         };
 
-        let prefix_padding = Span::styled("─".to_owned(), Style::default().add_modifier(Modifier::BOLD));
-        let padding = Span::styled("─".repeat(padding_len), Style::default().add_modifier(Modifier::BOLD));
-        let file_explorer_span = Span::styled(file_explorer_span_text, Style::default().add_modifier(Modifier::BOLD));
+        let prefix_padding = Span::styled(
+            "─".to_owned(),
+            Style::default().add_modifier(Modifier::BOLD),
+        );
+        let padding = Span::styled(
+            "─".repeat(padding_len),
+            Style::default().add_modifier(Modifier::BOLD),
+        );
+        let file_explorer_span = Span::styled(
+            file_explorer_span_text,
+            Style::default().add_modifier(Modifier::BOLD),
+        );
 
         let search_block = Block::default()
             .title_bottom(Line::from(vec![
-                prefix_padding, 
-                mode_span, 
+                prefix_padding,
+                mode_span,
                 key_hint_span,
                 padding,
-                file_explorer_span
+                file_explorer_span,
             ]))
             .borders(Borders::LEFT | Borders::RIGHT | Borders::BOTTOM)
             .border_set(symbols::border::Set {
@@ -121,7 +140,12 @@ impl<'a> Widget for Searchbar<'a> {
                 horizontal_top: " ",
             })
             .border_style(Style::default().fg(self.theme.borders))
-            .padding(Padding { left: 1, right: 1, top: 0, bottom: 0 });
+            .padding(Padding {
+                left: 1,
+                right: 1,
+                top: 0,
+                bottom: 0,
+            });
 
         self.input.set_block(search_block);
         self.input.set_text_style(self.theme.text);

@@ -1,10 +1,12 @@
 use log::info;
 use ratatui::{
+    layout::Alignment,
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{
-        Block, BorderType, Borders, List, ListItem, ListState, Padding, StatefulWidget, Widget, block::Title,
-    }, layout::Alignment,
+        block::Title, Block, BorderType, Borders, List, ListItem, ListState, Padding,
+        StatefulWidget, Widget,
+    },
 };
 
 use crate::db::db_mac::NoteIdentifier;
@@ -22,7 +24,6 @@ pub(crate) enum NoteListMode {
     Sidebar,
     Fullscreen,
 }
-
 
 #[derive(Debug, Clone)]
 pub(crate) struct SelectionStyle {
@@ -46,7 +47,7 @@ pub(crate) struct NoteList {
     pub(crate) action: NoteListAction,
     pub(crate) state: ComponentState,
     pub(crate) mode: NoteListMode,
-    pub(crate) theme: NoteListTheme
+    pub(crate) theme: NoteListTheme,
 }
 
 impl NoteList {
@@ -99,7 +100,8 @@ impl NoteList {
     }
 
     pub(crate) fn remove(&mut self, note_id: i64) {
-        let pos = self.note_identifiers
+        let pos = self
+            .note_identifiers
             .iter()
             .position(|nid| nid.id == note_id)
             .expect("Note should be in note_identifiers");
@@ -143,62 +145,58 @@ impl Widget for NoteList {
                 " <Alt-f> hide files ",
                 Borders::TOP | Borders::RIGHT | Borders::BOTTOM,
                 Padding::new(1, 1, 0, 0),
-            )
+            ),
         };
 
-        let (
-            border_style,
-            title_style,
-            list_info_style,
-            list_item_style,
-        ) = match (self.state, self.mode) {
-            (ComponentState::Active, NoteListMode::Fullscreen) => (
-                Style::default().bold().fg(self.theme.borders),
-                Style::default().bold().fg(self.theme.title),
-                Style::default().bold(),
-                Style::default(),
-            ),
-            (ComponentState::Inactive, NoteListMode::Fullscreen) => (
-                Style::default().bold().fg(self.theme.borders).dim(),
-                Style::default().bold().fg(self.theme.title).dim(),
-                Style::default().bold().dim(),
-                Style::default().dim(),
-            ),
-            (ComponentState::Unavailable, NoteListMode::Fullscreen) => (
-                Style::default().dim(),
-                Style::default().dim(),
-                Style::default().dim(),
-                Style::default().dim(),
-            ),
-            (ComponentState::Error, NoteListMode::Fullscreen) => (
-                Style::default().bold().fg(self.theme.borders),
-                Style::default().bold().fg(Color::Red),
-                Style::default().bold().fg(Color::Red),
-                Style::default(),
-            ),
-            (ComponentState::Active, NoteListMode::Sidebar) => (
-                Style::default().bold().fg(self.theme.borders),
-                Style::default().bold().fg(self.theme.title),
-                Style::default().bold(),
-                Style::default(),
-            ),
-            (ComponentState::Inactive, NoteListMode::Sidebar) => (
-                Style::default().bold().fg(self.theme.borders).dim(),
-                Style::default().bold().fg(self.theme.title).dim(),
-                Style::default().bold().dim(),
-                Style::default().dim(),
-            ),
-            _ => (
-                Style::default(),
-                Style::default(),
-                Style::default(),
-                Style::default(),
-            )
-        };
+        let (border_style, title_style, list_info_style, list_item_style) =
+            match (self.state, self.mode) {
+                (ComponentState::Active, NoteListMode::Fullscreen) => (
+                    Style::default().bold().fg(self.theme.borders),
+                    Style::default().bold().fg(self.theme.title),
+                    Style::default().bold(),
+                    Style::default(),
+                ),
+                (ComponentState::Inactive, NoteListMode::Fullscreen) => (
+                    Style::default().bold().fg(self.theme.borders).dim(),
+                    Style::default().bold().fg(self.theme.title).dim(),
+                    Style::default().bold().dim(),
+                    Style::default().dim(),
+                ),
+                (ComponentState::Unavailable, NoteListMode::Fullscreen) => (
+                    Style::default().dim(),
+                    Style::default().dim(),
+                    Style::default().dim(),
+                    Style::default().dim(),
+                ),
+                (ComponentState::Error, NoteListMode::Fullscreen) => (
+                    Style::default().bold().fg(self.theme.borders),
+                    Style::default().bold().fg(Color::Red),
+                    Style::default().bold().fg(Color::Red),
+                    Style::default(),
+                ),
+                (ComponentState::Active, NoteListMode::Sidebar) => (
+                    Style::default().bold().fg(self.theme.borders),
+                    Style::default().bold().fg(self.theme.title),
+                    Style::default().bold(),
+                    Style::default(),
+                ),
+                (ComponentState::Inactive, NoteListMode::Sidebar) => (
+                    Style::default().bold().fg(self.theme.borders).dim(),
+                    Style::default().bold().fg(self.theme.title).dim(),
+                    Style::default().bold().dim(),
+                    Style::default().dim(),
+                ),
+                _ => (
+                    Style::default(),
+                    Style::default(),
+                    Style::default(),
+                    Style::default(),
+                ),
+            };
 
         let info_line = Line::styled(info_text, list_info_style).alignment(Alignment::Center);
         let title = Span::styled(title_text, title_style);
-        
+
         let load_note_block = Block::default()
             .title(Title::from(title).alignment(Alignment::Center))
             .title_bottom(info_line)
@@ -218,7 +216,7 @@ impl Widget for NoteList {
         .highlight_style(
             Style::default()
                 .add_modifier(self.theme.selection_style.modifier)
-                .fg(self.theme.selection_style.highlight)
+                .fg(self.theme.selection_style.highlight),
         )
         .highlight_symbol(&self.theme.selection_style.pointer)
         .repeat_highlight_symbol(true);
