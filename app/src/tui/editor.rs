@@ -1,11 +1,12 @@
 use std::collections::HashMap;
 
-use log::{info, error};
+use log::{error, info};
 use ratatui::{
+    layout::Alignment,
     style::{Color, Modifier, Style, Stylize},
     symbols::border,
     text::{Line, Span},
-    widgets::{block::Title, Block, Borders, Padding, Widget}, layout::Alignment,
+    widgets::{block::Title, Block, Borders, Padding, Widget},
 };
 use tuipaz_textarea::{CursorMove, Input, Key, Link as TextAreaLink, TextArea, TextAreaTheme};
 
@@ -25,6 +26,7 @@ pub(crate) struct EditorTheme {
     pub(crate) normal_mode: Color,
     pub(crate) insert_mode: Color,
     pub(crate) visual_mode: Color,
+    pub(crate) visual_line_mode: Color,
     pub(crate) select: Color,
     pub(crate) search: Color,
     pub(crate) links: Color,
@@ -127,6 +129,7 @@ pub(crate) enum EditorMode {
     Insert,
     Normal,
     Visual,
+    VisualLine,
 }
 
 impl<'a> Editor<'a> {
@@ -142,7 +145,7 @@ impl<'a> Editor<'a> {
         let ta_links = links
             .values()
             .map(|link| (link.text_id as usize, link.to_textarea_link()))
-            .collect::<HashMap<usize,TextAreaLink>>();
+            .collect::<HashMap<usize, TextAreaLink>>();
 
         let ta_theme = TextAreaTheme {
             text: theme.text,
@@ -184,14 +187,14 @@ impl<'a> Editor<'a> {
         &mut self,
         title: String,
         body: Vec<String>,
-        links: HashMap<i64, Link>, 
+        links: HashMap<i64, Link>,
         note_id: Option<i64>,
         max_col: u16,
     ) {
         let ta_links = links
             .values()
             .map(|link| (link.text_id as usize, link.to_textarea_link()))
-            .collect::<HashMap<usize,TextAreaLink>>();
+            .collect::<HashMap<usize, TextAreaLink>>();
 
         let ta_theme = TextAreaTheme {
             text: self.theme.text,
@@ -234,6 +237,11 @@ impl<'a> Editor<'a> {
                 self.body.clear_search();
                 " <| VISUAL |>".to_owned()
             }
+            EditorMode::VisualLine => {
+                self.body.start_selection();
+                self.body.clear_search();
+                " <| V-LINE |>".to_owned()
+            }
         };
         self.mode = mode;
     }
@@ -250,17 +258,49 @@ impl<'a> Editor<'a> {
                 Input { key: Key::Esc, .. } => {
                     self.set_mode(EditorMode::Normal);
                 }
-                Input { key: Key::Up, shift: false, ..} 
-                | Input { key: Key::Down, shift: false, .. }
-                | Input { key: Key::Up, shift: true, ..}
-                | Input { key: Key::Down, shift: true, ..} => {
+                Input {
+                    key: Key::Up,
+                    shift: false,
+                    ..
+                }
+                | Input {
+                    key: Key::Down,
+                    shift: false,
+                    ..
+                }
+                | Input {
+                    key: Key::Up,
+                    shift: true,
+                    ..
+                }
+                | Input {
+                    key: Key::Down,
+                    shift: true,
+                    ..
+                } => {
                     self.body.input(input);
                     self.jump_cursor_to_prev_col();
                 }
-                Input { key: Key::Left, shift: false, ..} 
-                | Input { key: Key::Right, shift: false, .. }
-                | Input { key: Key::Left, shift: true, ..}
-                | Input { key: Key::Right, shift: true, ..} => {
+                Input {
+                    key: Key::Left,
+                    shift: false,
+                    ..
+                }
+                | Input {
+                    key: Key::Right,
+                    shift: false,
+                    ..
+                }
+                | Input {
+                    key: Key::Left,
+                    shift: true,
+                    ..
+                }
+                | Input {
+                    key: Key::Right,
+                    shift: true,
+                    ..
+                } => {
                     self.body.input(input);
                     self.set_prev_cursor_col();
                 }
@@ -271,11 +311,15 @@ impl<'a> Editor<'a> {
             EditorMode::Normal => match (input, &self.cmd_state) {
                 // Handle multi-key commands
                 (
-                    input, 
-                    CommandState::GoTo | CommandState::Delete | CommandState::Yank
-                    | CommandState::FindForward | CommandState::FindBackward
-                    | CommandState::PrimeHop | CommandState::ExecuteHop 
-                 ) => {
+                    input,
+                    CommandState::GoTo
+                    | CommandState::Delete
+                    | CommandState::Yank
+                    | CommandState::FindForward
+                    | CommandState::FindBackward
+                    | CommandState::PrimeHop
+                    | CommandState::ExecuteHop,
+                ) => {
                     if input.key == Key::Esc {
                         self.cmd_buf.clear();
                         self.num_buf.clear();
@@ -610,12 +654,12 @@ impl<'a> Editor<'a> {
                     _,
                 ) => {
                     self.body.move_cursor(CursorMove::Head);
-                    self.set_mode(EditorMode::Visual);
+                    self.set_mode(EditorMode::VisualLine);
                     self.body.move_cursor(CursorMove::End);
                 }
                 (input, CommandState::NoCommand) => self.prime_command_state(input),
             },
-            EditorMode::Visual => match (input, &self.cmd_state) {
+            EditorMode::Visual | EditorMode::VisualLine => match (input, &self.cmd_state) {
                 (Input { key: Key::Esc, .. }, _) => {
                     self.set_mode(EditorMode::Normal);
                 }
@@ -670,6 +714,19 @@ impl<'a> Editor<'a> {
                     CommandState::NoCommand,
                 )
                 | (Input { key: Key::Up, .. }, CommandState::NoCommand) => {
+                    if self.mode == EditorMode::VisualLine
+                        && self
+                            .body
+                            .get_selection_start()
+                            .expect("VisualLine mode always has a selection")
+                            .0
+                            == self.body.cursor().0
+                    {
+                        self.body.cancel_selection();
+                        self.body.start_selection();
+                        self.body.move_cursor(CursorMove::Head);
+                    }
+
                     match num_buf_len {
                         0 => {
                             self.body.move_cursor(CursorMove::Up);
@@ -831,7 +888,8 @@ impl<'a> Editor<'a> {
         let line_len = self.body.lines()[c.0].len();
 
         if self.prev_cursor_col < line_len {
-            self.body.move_cursor(CursorMove::Jump(c.0 as u16, self.prev_cursor_col as u16));
+            self.body
+                .move_cursor(CursorMove::Jump(c.0 as u16, self.prev_cursor_col as u16));
         } else {
             self.body.move_cursor(CursorMove::End);
         }
@@ -908,12 +966,11 @@ impl<'a> Editor<'a> {
                     if self.num_buf.len() == 2 {
                         self.execute_hop();
                     }
-                } 
+                }
             } else {
                 self.cmd_state = CommandState::NoCommand;
             }
         }
-
     }
 
     fn execute_delete(&mut self, modifier: char) {
@@ -936,9 +993,7 @@ impl<'a> Editor<'a> {
                 self.cmd_buf.clear();
             }
             'k' => {
-                let actions = move |editor: &mut Editor<'a>| {
-                    editor.body.delete_line(true)
-                };
+                let actions = move |editor: &mut Editor<'a>| editor.body.delete_line(true);
 
                 let num_buf_len = self.num_buf.len() as u32;
                 match num_buf_len {
@@ -1034,7 +1089,7 @@ impl<'a> Editor<'a> {
                 self.body.copy();
                 self.body.cancel_selection();
                 self.cmd_buf.clear();
-            },
+            }
             'j' => {
                 self.body.start_selection();
                 let actions = move |editor: &mut Editor<'a>| {
@@ -1052,7 +1107,7 @@ impl<'a> Editor<'a> {
                 self.body.copy();
                 self.body.cancel_selection();
                 self.cmd_buf.clear();
-            },
+            }
             'k' => {
                 self.body.start_selection();
                 let actions = move |editor: &mut Editor<'a>| {
@@ -1070,7 +1125,7 @@ impl<'a> Editor<'a> {
                 self.body.copy();
                 self.body.cancel_selection();
                 self.cmd_buf.clear();
-            },
+            }
             'l' => {
                 self.body.start_selection();
                 let actions = move |editor: &mut Editor<'a>| {
@@ -1088,7 +1143,7 @@ impl<'a> Editor<'a> {
                 self.body.copy();
                 self.body.cancel_selection();
                 self.cmd_buf.clear();
-            },
+            }
             'w' => {
                 self.body.start_selection();
                 let actions = move |editor: &mut Editor<'a>| {
@@ -1106,7 +1161,7 @@ impl<'a> Editor<'a> {
                 self.body.copy();
                 self.body.cancel_selection();
                 self.cmd_buf.clear();
-            },
+            }
             'b' => {
                 self.body.start_selection();
                 let actions = move |editor: &mut Editor<'a>| {
@@ -1124,13 +1179,14 @@ impl<'a> Editor<'a> {
                 self.body.copy();
                 self.body.cancel_selection();
                 self.cmd_buf.clear();
-            },
+            }
             _ => {
                 self.cmd_buf.clear();
                 self.num_buf.clear();
             }
         }
-        self.body.move_cursor(CursorMove::Jump(start_row as u16, start_col as u16));
+        self.body
+            .move_cursor(CursorMove::Jump(start_row as u16, start_col as u16));
         self.cmd_state = CommandState::NoCommand;
     }
 
@@ -1163,15 +1219,21 @@ impl<'a> Editor<'a> {
         match forward {
             true => {
                 if let Some(col) = line[cursor.1 + 1..].chars().position(|c| c == target) {
-                    self.body.move_cursor(CursorMove::Jump(cursor.0 as u16, (cursor.1 + 1 + col) as u16));
+                    self.body.move_cursor(CursorMove::Jump(
+                        cursor.0 as u16,
+                        (cursor.1 + 1 + col) as u16,
+                    ));
                 }
-            },
+            }
             false => {
                 if let Some(col) = line[..cursor.1 - 1].chars().rev().position(|c| c == target) {
-                    self.body.move_cursor(CursorMove::Jump(cursor.0 as u16, (cursor.1 - 2 - col) as u16));
+                    self.body.move_cursor(CursorMove::Jump(
+                        cursor.0 as u16,
+                        (cursor.1 - 2 - col) as u16,
+                    ));
                 }
-            },
-        } 
+            }
+        }
 
         self.cmd_buf.clear();
         self.num_buf.clear();
@@ -1216,10 +1278,7 @@ impl<'a> Editor<'a> {
             .iter()
             .enumerate()
             .fold(0u32, |mut acc, (idx, n)| {
-                acc += std::cmp::max(
-                    *n,
-                    (10u32).pow(num_buf_len - 1 - idx as u32) * *n,
-                );
+                acc += std::cmp::max(*n, (10u32).pow(num_buf_len - 1 - idx as u32) * *n);
                 acc
             }) as u16
     }
@@ -1234,61 +1293,67 @@ impl<'a> Widget for Editor<'a> {
             EditorMode::Normal => Style::default().bold().fg(self.theme.normal_mode),
             EditorMode::Insert => Style::default().bold().fg(self.theme.insert_mode),
             EditorMode::Visual => Style::default().bold().fg(self.theme.visual_mode),
+            EditorMode::VisualLine => Style::default().bold().fg(self.theme.visual_line_mode),
         };
 
         let (title_style, key_hint_style, text_style) = match self.state {
             ComponentState::Active => (
                 Style::default().bold().fg(self.theme.title),
                 Style::default().bold(),
-                Style::default().fg(self.theme.text)
+                Style::default().fg(self.theme.text),
             ),
             ComponentState::Inactive => (
                 Style::default().bold().fg(self.theme.title).dim(),
                 Style::default().bold().dim(),
-                Style::default().fg(self.theme.text).dim()
+                Style::default().fg(self.theme.text).dim(),
             ),
-            _ => (Style::default(), Style::default(), Style::default())
+            _ => (Style::default(), Style::default(), Style::default()),
         };
 
         let block_info_len = self.block_info.len();
 
         let (mode_span, key_hint_span) = match self.searchbar_open {
-            true => {
-                (Span::styled("", Style::default()), Span::styled("", key_hint_style))
-            },
-            false => {
-                (
-                    Span::styled(self.block_info, info_style),
-                    Span::styled(
-                        " | <Alt-q> quit | <Alt-s/l/d/n> save/load/delete/new | <Alt-t> edit title ",
-                        key_hint_style,
-                    ),
-                )
-            },
-        };
-
-        let (
-            file_explorer_hint_text, 
-            cursor_style, 
-            top_right, 
-            bottom_left, 
-            bottom_right
-        ) = match (self.sidebar_open, self.searchbar_open) {
-            (true, true) => ("".to_owned(), Style::default(), "┬", "├", "┤"),
-            (false, true) => ("".to_owned(), Style::default(), "╮", "├", "┤"),
-            (true, false) => ("".to_owned(), Style::default().add_modifier(Modifier::REVERSED), "┬", "╰","┴"),
-            (false, false) => (
-                " <Alt-f> show files ".to_owned(),
-                Style::default().add_modifier(Modifier::REVERSED),
-                "╮", "╰", "╯"
+            true => (
+                Span::styled("", Style::default()),
+                Span::styled("", key_hint_style),
+            ),
+            false => (
+                Span::styled(self.block_info, info_style),
+                Span::styled(
+                    " | <Alt-q> quit | <Alt-s/l/d/n> save/load/delete/new | <Alt-t> edit title ",
+                    key_hint_style,
+                ),
             ),
         };
+
+        let (file_explorer_hint_text, cursor_style, top_right, bottom_left, bottom_right) =
+            match (self.sidebar_open, self.searchbar_open) {
+                (true, true) => ("".to_owned(), Style::default(), "┬", "├", "┤"),
+                (false, true) => ("".to_owned(), Style::default(), "╮", "├", "┤"),
+                (true, false) => (
+                    "".to_owned(),
+                    Style::default().add_modifier(Modifier::REVERSED),
+                    "┬",
+                    "╰",
+                    "┴",
+                ),
+                (false, false) => (
+                    " <Alt-f> show files ".to_owned(),
+                    Style::default().add_modifier(Modifier::REVERSED),
+                    "╮",
+                    "╰",
+                    "╯",
+                ),
+            };
 
         let feh_len = file_explorer_hint_text.len();
 
         let title_text = format!(" {} ", self.title);
         let title = Span::styled(title_text, title_style);
-        let file_explorer_hint = Span::styled(file_explorer_hint_text, Style::default().add_modifier(Modifier::BOLD));
+        let file_explorer_hint = Span::styled(
+            file_explorer_hint_text,
+            Style::default().add_modifier(Modifier::BOLD),
+        );
 
         let kht_len = key_hint_span.content.len();
         let tb_text_len = (kht_len + block_info_len + feh_len) as u16;
@@ -1306,7 +1371,7 @@ impl<'a> Widget for Editor<'a> {
                 mode_span,
                 key_hint_span,
                 tb_padding,
-                file_explorer_hint
+                file_explorer_hint,
             ]))
             .borders(Borders::ALL)
             .border_set(border::Set {
@@ -1335,8 +1400,8 @@ impl<'a> Widget for Editor<'a> {
 mod tests {
     use super::*;
 
-    const THEME_COLOR: Color = Color::Red; 
-    
+    const THEME_COLOR: Color = Color::Red;
+
     fn theme() -> EditorTheme {
         let modifiers = vec![Modifier::BOLD];
         EditorTheme {
@@ -1346,6 +1411,7 @@ mod tests {
             normal_mode: THEME_COLOR,
             insert_mode: THEME_COLOR,
             visual_mode: THEME_COLOR,
+            visual_line_mode: THEME_COLOR,
             select: THEME_COLOR,
             search: THEME_COLOR,
             links: THEME_COLOR,
@@ -1369,7 +1435,7 @@ mod tests {
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
-        
+
         editor.execute_delete('d');
         assert_eq!(editor.body.lines(), vec!["Line 2".to_string()]);
     }
@@ -1387,7 +1453,7 @@ mod tests {
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(1, 0));
-        
+
         editor.execute_delete('k');
         assert_eq!(editor.body.lines(), vec!["Line 1".to_string()]);
     }
@@ -1404,7 +1470,7 @@ mod tests {
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
-        
+
         editor.execute_delete('j');
         assert_eq!(editor.body.lines(), vec!["Line 2".to_string()]);
     }
@@ -1429,9 +1495,13 @@ mod tests {
 
     #[test]
     fn test_execute_delete_num_dj_no_links() {
-     let mut editor = Editor::new(
-            "Test Note".to_string(), 
-            vec!["Line 1".to_string(), "Line 2".to_string(), "Line 3".to_string()],
+        let mut editor = Editor::new(
+            "Test Note".to_string(),
+            vec![
+                "Line 1".to_string(),
+                "Line 2".to_string(),
+                "Line 3".to_string(),
+            ],
             HashMap::new(),
             None,
             false,
@@ -1441,7 +1511,7 @@ mod tests {
 
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
-        editor.num_buf = vec![2]; 
+        editor.num_buf = vec![2];
         editor.execute_delete('j');
         assert_eq!(editor.body.lines(), vec!["Line 3".to_string()]);
     }
@@ -1449,8 +1519,12 @@ mod tests {
     #[test]
     fn test_execute_delete_num_dk_no_links() {
         let mut editor = Editor::new(
-            "Test Note".to_string(), 
-            vec!["Line 1".to_string(), "Line 2".to_string(), "Line 3".to_string()],
+            "Test Note".to_string(),
+            vec![
+                "Line 1".to_string(),
+                "Line 2".to_string(),
+                "Line 3".to_string(),
+            ],
             HashMap::new(),
             None,
             false,
@@ -1510,7 +1584,7 @@ mod tests {
         );
         editor.set_mode(EditorMode::Normal);
         editor.body.move_cursor(CursorMove::Jump(0, 0));
-        editor.num_buf = vec![3]; 
+        editor.num_buf = vec![3];
         editor.execute_delete('w');
         assert_eq!(editor.body.lines(), vec![" two".to_string()]);
     }
@@ -1546,28 +1620,33 @@ mod tests {
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![1, 2];
-        editor.body.move_cursor(CursorMove::Jump(0,0));
-        editor.handle_input(Input { key: Key::Char('x'), ..Default::default() });
+        editor.body.move_cursor(CursorMove::Jump(0, 0));
+        editor.handle_input(Input {
+            key: Key::Char('x'),
+            ..Default::default()
+        });
         assert_eq!(editor.body.lines(), vec!["7".to_string()]);
     }
-
 
     #[test]
     fn test_goto_top_of_note() {
         let mut editor = Editor::new(
             "Test Note".to_string(),
-            vec!["1".to_string(), "2".to_string(), 
-                "3".to_string(), "4".to_string(), 
-                "5".to_string()
-            ], 
-            HashMap::new(), 
+            vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+            ],
+            HashMap::new(),
             None,
             false,
             140,
             theme(),
         );
         editor.set_mode(EditorMode::Normal);
-        editor.body.move_cursor(CursorMove::Jump(4,0));
+        editor.body.move_cursor(CursorMove::Jump(4, 0));
         editor.execute_goto('g');
         assert_eq!(editor.body.cursor(), (0, 0));
     }
@@ -1576,11 +1655,14 @@ mod tests {
     fn test_goto_line_num_note() {
         let mut editor = Editor::new(
             "Test Note".to_string(),
-            vec!["1".to_string(), "2".to_string(), 
-                "3".to_string(), "4".to_string(), 
-                "5".to_string()
-            ], 
-            HashMap::new(), 
+            vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+            ],
+            HashMap::new(),
             None,
             false,
             140,
@@ -1588,7 +1670,7 @@ mod tests {
         );
         editor.set_mode(EditorMode::Normal);
         editor.num_buf = vec![3];
-        editor.body.move_cursor(CursorMove::Jump(4,0));
+        editor.body.move_cursor(CursorMove::Jump(4, 0));
         editor.execute_goto('g');
         assert_eq!(editor.body.cursor(), (2, 0));
     }
@@ -1597,19 +1679,26 @@ mod tests {
     fn test_goto_end_of_note() {
         let mut editor = Editor::new(
             "Test Note".to_string(),
-            vec!["1".to_string(), "2".to_string(), 
-                "3".to_string(), "4".to_string(), 
-                "5".to_string()
-            ], 
-            HashMap::new(), 
+            vec![
+                "1".to_string(),
+                "2".to_string(),
+                "3".to_string(),
+                "4".to_string(),
+                "5".to_string(),
+            ],
+            HashMap::new(),
             None,
             false,
             140,
             theme(),
         );
         editor.set_mode(EditorMode::Normal);
-        editor.body.move_cursor(CursorMove::Jump(0,0));
-        editor.handle_input(Input { key: Key::Char('G'), shift: true, ..Default::default() });
+        editor.body.move_cursor(CursorMove::Jump(0, 0));
+        editor.handle_input(Input {
+            key: Key::Char('G'),
+            shift: true,
+            ..Default::default()
+        });
         assert_eq!(editor.body.cursor(), (4, 0));
     }
 }
