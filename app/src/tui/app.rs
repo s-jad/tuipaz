@@ -5,17 +5,19 @@ use log::info;
 use sqlx::{Pool, Sqlite};
 
 use crate::db::db_mac::NoteIdentifier;
-use tuipaz_textarea::{Link as TextAreaLink, Input};
+use tuipaz_textarea::{Input, Link as TextAreaLink};
 
 use super::{
     buttons::{Button, ButtonAction},
+    config::Config,
     editor::{Editor, EditorTheme},
-    events::{Events, Action},
+    events::{Action, Events},
     inputs::{InputAction, UserInput},
     note_list::{NoteList, NoteListAction, NoteListMode, NoteListTheme, SelectionStyle},
+    searchbar::{Searchbar, SearchbarTheme},
     ui::ui,
     user_messages::UserMessage,
-    utils::Tui, searchbar::{Searchbar, SearchbarTheme}, config::Config,
+    utils::Tui,
 };
 
 #[derive(PartialEq, Debug, Default, Clone, Copy)]
@@ -89,12 +91,17 @@ pub(crate) struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    pub fn new(config: Config, db: Pool<Sqlite>, note_identifiers: Vec<NoteIdentifier>, term_size: u16) -> Self {
+    pub fn new(
+        config: Config,
+        db: Pool<Sqlite>,
+        note_identifiers: Vec<NoteIdentifier>,
+        term_size: u16,
+    ) -> Self {
         let load_btn_state = match note_identifiers.len() {
             0 => ComponentState::Unavailable,
             _ => ComponentState::Inactive,
         };
-        
+
         let max_col = term_size - 4;
 
         let editor_theme = EditorTheme {
@@ -104,6 +111,7 @@ impl<'a> App<'a> {
             normal_mode: config.theme.modes.normal_mode,
             insert_mode: config.theme.modes.insert_mode,
             visual_mode: config.theme.modes.visual_mode,
+            visual_line_mode: config.theme.modes.visual_line_mode,
             select: config.theme.highlights.select,
             search: config.theme.highlights.search,
             links: config.theme.highlights.links,
@@ -114,7 +122,7 @@ impl<'a> App<'a> {
         };
 
         let search_theme = SearchbarTheme {
-            text: config.theme.text, 
+            text: config.theme.text,
             search_mode: config.theme.modes.search_mode,
             borders: config.theme.borders,
         };
@@ -154,16 +162,16 @@ impl<'a> App<'a> {
             ),
             note_list,
             btns: [
-                    Button::new(
-                        "New".to_owned(),
-                        ComponentState::Active,
-                        ButtonAction::RenderNewNoteScreen,
-                    ),
-                    Button::new(
-                        "Load".to_owned(),
-                        load_btn_state,
-                        ButtonAction::RenderLoadNoteScreen,
-                    ),
+                Button::new(
+                    "New".to_owned(),
+                    ComponentState::Active,
+                    ButtonAction::RenderNewNoteScreen,
+                ),
+                Button::new(
+                    "Load".to_owned(),
+                    load_btn_state,
+                    ButtonAction::RenderLoadNoteScreen,
+                ),
             ],
             btn_idx: 0,
             user_input: UserInput::new(ComponentState::Active, InputAction::Note),
@@ -192,11 +200,11 @@ impl<'a> App<'a> {
             ActiveWidget::Editor => {
                 self.editor.set_state(ComponentState::Active);
                 self.note_list.set_state(ComponentState::Inactive);
-            },
+            }
             ActiveWidget::Sidebar => {
                 self.note_list.set_state(ComponentState::Active);
                 self.editor.set_state(ComponentState::Inactive);
-            },
+            }
             ActiveWidget::Searchbar => {
                 self.searchbar.set_state(ComponentState::Active);
                 self.editor.set_state(ComponentState::Active);
@@ -213,17 +221,9 @@ impl<'a> App<'a> {
     pub(crate) fn switch_to_main(&mut self) {
         self.current_screen = Screen::Main;
         self.note_list.set_mode(NoteListMode::Sidebar);
-        match self.active_widget {
-            Some(active) => match active {
-                ActiveWidget::NoteList
-                | ActiveWidget::NoteTitleInput
-                | ActiveWidget::Searchbar => self.set_active_widget(ActiveWidget::Editor),
-                _ => {}
-            },
-            None => self.set_active_widget(ActiveWidget::Editor),
-        }
+        self.set_active_widget(ActiveWidget::Editor);
     }
-    
+
     pub(crate) fn switch_to_load_note(&mut self) {
         self.current_screen = Screen::LoadNote;
         self.note_list.set_mode(NoteListMode::Fullscreen);
